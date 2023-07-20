@@ -609,7 +609,7 @@
 
 /* Define to 1 if `major', `minor', and `makedev' are declared in
    <sysmacros.h>. */
-/* #undef MAJOR_IN_SYSMACROS */
+#define MAJOR_IN_SYSMACROS 1
 
 /* Define to 1 if makedev() takes 3 args */
 /* #undef MAKEDEV_TAKES_3_ARGS */
@@ -621,7 +621,7 @@
 #define MKNOD_CREATES_SOCKETS 1
 
 /* unprivileged group for unprivileged user */
-#define NOBODY_GROUP "nobody"
+#define NOBODY_GROUP "nogroup"
 
 /* unprivileged user--e.g. nobody */
 #define NOBODY_USER "nobody"

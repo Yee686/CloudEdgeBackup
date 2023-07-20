@@ -433,7 +433,7 @@ Copyright (C) 2012 Free Software Foundation, Inc.
 This config.status script is free software; the Free Software Foundation
 gives unlimited permission to copy, distribute and modify it."
 
-ac_pwd='/root/PandaSync'
+ac_pwd='/root/cloudbackup/CloudEdgeBackup'
 srcdir='.'
 INSTALL='/usr/bin/install -c'
 MKDIR_P='/usr/bin/mkdir -p'
@@ -635,7 +635,7 @@ S["ac_ct_CC"]="gcc"
 S["CPPFLAGS"]=""
 S["LDFLAGS"]=""
 S["CFLAGS"]="-I./zlib -I./popt -g -O2 -DHAVE_CONFIG_H -Wall -W"
-S["CC"]="gcc -std=gnu99"
+S["CC"]="gcc"
 S["host_os"]="linux-gnu"
 S["host_vendor"]="unknown"
 S["host_cpu"]="x86_64"
@@ -664,6 +664,7 @@ S["infodir"]="${datarootdir}/info"
 S["docdir"]="${datarootdir}/doc/${PACKAGE_TARNAME}"
 S["oldincludedir"]="/usr/include"
 S["includedir"]="${prefix}/include"
+S["runstatedir"]="${localstatedir}/run"
 S["localstatedir"]="${prefix}/var"
 S["sharedstatedir"]="${prefix}/com"
 S["sysconfdir"]="${prefix}/etc"
@@ -736,7 +737,7 @@ D["RSYNC_PATH"]=" \"rsync\""
 D["RSYNCD_SYSCONF"]=" \"/etc/rsyncd.conf\""
 D["RSYNC_RSH"]=" \"ssh\""
 D["NOBODY_USER"]=" \"nobody\""
-D["NOBODY_GROUP"]=" \"nobody\""
+D["NOBODY_GROUP"]=" \"nogroup\""
 D["INET6"]=" 1"
 D["CONFIG_LOCALE"]=" 1"
 D["STDC_HEADERS"]=" 1"
@@ -782,6 +783,7 @@ D["HAVE_SYS_XATTR_H"]=" 1"
 D["HAVE_LINUX_FALLOC_H"]=" 1"
 D["HAVE_NETINET_IN_SYSTM_H"]=" 1"
 D["HAVE_NETINET_IP_H"]=" 1"
+D["MAJOR_IN_SYSMACROS"]=" 1"
 D["SIZEOF_INT"]=" 4"
 D["SIZEOF_LONG"]=" 8"
 D["SIZEOF_LONG_LONG"]=" 8"

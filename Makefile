@@ -9,7 +9,7 @@ bindir=${exec_prefix}/bin
 mandir=${datarootdir}/man
 
 LIBS=
-CC=gcc -std=gnu99
+CC=gcc
 CFLAGS=-I./zlib -I./popt -g -O2 -DHAVE_CONFIG_H -Wall -W
 CPPFLAGS=
 EXEEXT=
