@@ -2669,7 +2669,7 @@ conftest.c: In function 'main':
 conftest.c:65:8: warning: implicit declaration of function 'makedev' [-Wimplicit-function-declaration]
    65 | return makedev(0, 0);
       |        ^~~~~~~
-/usr/bin/ld: /tmp/cctObYx4.o: in function `main':
+/usr/bin/ld: /tmp/ccRXSJ9Q.o: in function `main':
 /root/cloudbackup/CloudEdgeBackup/conftest.c:65: undefined reference to `makedev'
 collect2: error: ld returned 1 exit status
 configure.sh:5613: $? = 1
@@ -4354,7 +4354,7 @@ configure.sh:6827: $? = 0
 configure.sh:6844: result: none required
 configure.sh:6852: checking for library containing libiconv_open
 configure.sh:6883: gcc -o conftest -g -O2 -DHAVE_CONFIG_H -Wall -W   conftest.c  >&5
-/usr/bin/ld: /tmp/ccdspZ0K.o: in function `main':
+/usr/bin/ld: /tmp/ccSdg0VF.o: in function `main':
 /root/cloudbackup/CloudEdgeBackup/conftest.c:97: undefined reference to `libiconv_open'
 collect2: error: ld returned 1 exit status
 configure.sh:6883: $? = 1
@@ -5317,7 +5317,7 @@ configure.sh:7305: $? = 0
 configure.sh:7305: result: yes
 configure.sh:7364: checking for aclsort
 configure.sh:7364: gcc -o conftest -g -O2 -DHAVE_CONFIG_H -Wall -W   conftest.c  >&5
-/usr/bin/ld: /tmp/ccnBMA3P.o: in function `main':
+/usr/bin/ld: /tmp/ccrm8cDG.o: in function `main':
 /root/cloudbackup/CloudEdgeBackup/conftest.c:129: undefined reference to `aclsort'
 collect2: error: ld returned 1 exit status
 configure.sh:7364: $? = 1
@@ -5891,7 +5891,7 @@ configure.sh:7698: $? = 0
 configure.sh:7698: result: yes
 configure.sh:7698: checking for strlcat
 configure.sh:7698: gcc -o conftest -g -O2 -DHAVE_CONFIG_H -Wall -W   conftest.c  >&5
-/usr/bin/ld: /tmp/cc3XaSiu.o: in function `main':
+/usr/bin/ld: /tmp/ccKFo2Gm.o: in function `main':
 /root/cloudbackup/CloudEdgeBackup/conftest.c:159: undefined reference to `strlcat'
 collect2: error: ld returned 1 exit status
 configure.sh:7698: $? = 1
@@ -6061,7 +6061,7 @@ configure.sh: failed program was:
 configure.sh:7698: result: no
 configure.sh:7698: checking for strlcpy
 configure.sh:7698: gcc -o conftest -g -O2 -DHAVE_CONFIG_H -Wall -W   conftest.c  >&5
-/usr/bin/ld: /tmp/cc5qvemO.o: in function `main':
+/usr/bin/ld: /tmp/ccWnfDSG.o: in function `main':
 /root/cloudbackup/CloudEdgeBackup/conftest.c:159: undefined reference to `strlcpy'
 collect2: error: ld returned 1 exit status
 configure.sh:7698: $? = 1
@@ -6259,7 +6259,7 @@ configure.sh:7698: $? = 0
 configure.sh:7698: result: yes
 configure.sh:7698: checking for setmode
 configure.sh:7698: gcc -o conftest -g -O2 -DHAVE_CONFIG_H -Wall -W   conftest.c  >&5
-/usr/bin/ld: /tmp/ccI46hAf.o: in function `main':
+/usr/bin/ld: /tmp/ccpmoHc9.o: in function `main':
 /root/cloudbackup/CloudEdgeBackup/conftest.c:166: undefined reference to `setmode'
 collect2: error: ld returned 1 exit status
 configure.sh:7698: $? = 1
@@ -6452,7 +6452,7 @@ configure.sh:7698: $? = 0
 configure.sh:7698: result: yes
 configure.sh:7698: checking for va_copy
 configure.sh:7698: gcc -o conftest -g -O2 -DHAVE_CONFIG_H -Wall -W   conftest.c  >&5
-/usr/bin/ld: /tmp/ccqT5sXn.o: in function `main':
+/usr/bin/ld: /tmp/cc0b65be.o: in function `main':
 /root/cloudbackup/CloudEdgeBackup/conftest.c:170: undefined reference to `va_copy'
 collect2: error: ld returned 1 exit status
 configure.sh:7698: $? = 1
@@ -6633,7 +6633,7 @@ configure.sh: failed program was:
 configure.sh:7698: result: no
 configure.sh:7698: checking for __va_copy
 configure.sh:7698: gcc -o conftest -g -O2 -DHAVE_CONFIG_H -Wall -W   conftest.c  >&5
-/usr/bin/ld: /tmp/ccHDEGwJ.o: in function `main':
+/usr/bin/ld: /tmp/ccgvfbrA.o: in function `main':
 /root/cloudbackup/CloudEdgeBackup/conftest.c:170: undefined reference to `__va_copy'
 collect2: error: ld returned 1 exit status
 configure.sh:7698: $? = 1
@@ -6830,7 +6830,7 @@ configure.sh:7698: $? = 0
 configure.sh:7698: result: yes
 configure.sh:7698: checking for locale_charset
 configure.sh:7698: gcc -o conftest -g -O2 -DHAVE_CONFIG_H -Wall -W   conftest.c  >&5
-/usr/bin/ld: /tmp/ccp0jIsP.o: in function `main':
+/usr/bin/ld: /tmp/ccX2QctI.o: in function `main':
 /root/cloudbackup/CloudEdgeBackup/conftest.c:174: undefined reference to `locale_charset'
 collect2: error: ld returned 1 exit status
 configure.sh:7698: $? = 1
@@ -7023,7 +7023,7 @@ configure.sh:7698: $? = 0
 configure.sh:7698: result: yes
 configure.sh:7698: checking for extattr_get_link
 configure.sh:7698: gcc -o conftest -g -O2 -DHAVE_CONFIG_H -Wall -W   conftest.c  >&5
-/usr/bin/ld: /tmp/ccrJGsm5.o: in function `main':
+/usr/bin/ld: /tmp/ccwAEuFV.o: in function `main':
 /root/cloudbackup/CloudEdgeBackup/conftest.c:176: undefined reference to `extattr_get_link'
 collect2: error: ld returned 1 exit status
 configure.sh:7698: $? = 1
@@ -7218,7 +7218,7 @@ configure.sh:7698: $? = 0
 configure.sh:7698: result: yes
 configure.sh:7698: checking for setattrlist
 configure.sh:7698: gcc -o conftest -g -O2 -DHAVE_CONFIG_H -Wall -W   conftest.c  >&5
-/usr/bin/ld: /tmp/ccnpYvhl.o: in function `main':
+/usr/bin/ld: /tmp/ccjm2FZb.o: in function `main':
 /root/cloudbackup/CloudEdgeBackup/conftest.c:178: undefined reference to `setattrlist'
 collect2: error: ld returned 1 exit status
 configure.sh:7698: $? = 1
@@ -7423,7 +7423,7 @@ configure.sh:7698: $? = 0
 configure.sh:7698: result: yes
 configure.sh:7698: checking for attropen
 configure.sh:7698: gcc -o conftest -g -O2 -DHAVE_CONFIG_H -Wall -W   conftest.c  >&5
-/usr/bin/ld: /tmp/ccRXruPr.o: in function `main':
+/usr/bin/ld: /tmp/ccrABFQi.o: in function `main':
 /root/cloudbackup/CloudEdgeBackup/conftest.c:182: undefined reference to `attropen'
 collect2: error: ld returned 1 exit status
 configure.sh:7698: $? = 1
@@ -8601,7 +8601,7 @@ configure.sh:8676: checking for stunnel4
 configure.sh:8707: result: stunnel
 configure.sh:8719: checking for _acl
 configure.sh:8719: gcc -o conftest -I./zlib -I./popt -g -O2 -DHAVE_CONFIG_H -Wall -W   conftest.c  >&5
-/usr/bin/ld: /tmp/cchAgt9I.o: in function `main':
+/usr/bin/ld: /tmp/ccZ8gPuC.o: in function `main':
 /root/cloudbackup/CloudEdgeBackup/conftest.c:205: undefined reference to `_acl'
 collect2: error: ld returned 1 exit status
 configure.sh:8719: $? = 1
@@ -8817,7 +8817,7 @@ configure.sh: failed program was:
 configure.sh:8719: result: no
 configure.sh:8719: checking for __acl
 configure.sh:8719: gcc -o conftest -I./zlib -I./popt -g -O2 -DHAVE_CONFIG_H -Wall -W   conftest.c  >&5
-/usr/bin/ld: /tmp/cct7owf5.o: in function `main':
+/usr/bin/ld: /tmp/ccR2WbJX.o: in function `main':
 /root/cloudbackup/CloudEdgeBackup/conftest.c:205: undefined reference to `__acl'
 collect2: error: ld returned 1 exit status
 configure.sh:8719: $? = 1
@@ -9033,7 +9033,7 @@ configure.sh: failed program was:
 configure.sh:8719: result: no
 configure.sh:8719: checking for _facl
 configure.sh:8719: gcc -o conftest -I./zlib -I./popt -g -O2 -DHAVE_CONFIG_H -Wall -W   conftest.c  >&5
-/usr/bin/ld: /tmp/ccoGd40q.o: in function `main':
+/usr/bin/ld: /tmp/ccmCWJ5i.o: in function `main':
 /root/cloudbackup/CloudEdgeBackup/conftest.c:205: undefined reference to `_facl'
 collect2: error: ld returned 1 exit status
 configure.sh:8719: $? = 1
@@ -9249,7 +9249,7 @@ configure.sh: failed program was:
 configure.sh:8719: result: no
 configure.sh:8719: checking for __facl
 configure.sh:8719: gcc -o conftest -I./zlib -I./popt -g -O2 -DHAVE_CONFIG_H -Wall -W   conftest.c  >&5
-/usr/bin/ld: /tmp/ccAaUmfP.o: in function `main':
+/usr/bin/ld: /tmp/ccXaGQVE.o: in function `main':
 /root/cloudbackup/CloudEdgeBackup/conftest.c:205: undefined reference to `__facl'
 collect2: error: ld returned 1 exit status
 configure.sh:8719: $? = 1

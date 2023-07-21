@@ -243,8 +243,15 @@ int make_delta_to_full(const char* fname, const char* recovery_timestamp)
 
 	rprintf(FWARNING, "[yee-%s] sender.c: make_delta_to_full dir_name: %s file_name: %s\n", who_am_i(), dir_name, file_name);
 
+	char backup_path[MAXPATHLEN];
+	strcpy(backup_path, dir_name);
+	strcat(backup_path, "/");
+	strcat(backup_path, file_name);
+	strcat(backup_path, ".backup/");
+
+
 	// 打开备份文件路径
-	DIR *dir = opendir(dir_name);
+	DIR *dir = opendir(backup_path);
 	if ( dir )
 	{
 		// rprintf(FWARNING, "[yee-%s] sender.c: make_delta_to_full opendir() success\n", who_am_i());
@@ -267,7 +274,7 @@ int make_delta_to_full(const char* fname, const char* recovery_timestamp)
 		strcat(delta_fname_prefix, ".delta.");
 		// rprintf(FWARNING, "[yee-%s] sender.c: make_delta_to_full delta_fname_prefix: %s\n", who_am_i(), delta_fname_prefix);
 
-		// 在当前路径下 找到对应的fulnamefile_namel文件和delta文件
+		// 在当前路径下 找到对应的full_file_name文件和delta文件
 		struct dirent *ent;
 		while((ent = readdir(dir)) != NULL)
 		{
@@ -278,6 +285,8 @@ int make_delta_to_full(const char* fname, const char* recovery_timestamp)
 				
 				strcpy(full_fpath, dir_name);
 				strcat(full_fpath, "/");
+				strcat(full_fpath, file_name);
+				strcat(full_fpath, ".backup/");
 				strcat(full_fpath, full_fname);
 
 				full_count++;
@@ -289,6 +298,9 @@ int make_delta_to_full(const char* fname, const char* recovery_timestamp)
 
 				strcpy(delta_fpath[delta_count], dir_name);
 				strcat(delta_fpath[delta_count], "/");
+				strcat(delta_fpath[delta_count], file_name);
+				strcat(delta_fpath[delta_count], ".backup/");
+
 				strcat(delta_fpath[delta_count], delta_fname[delta_count]);
 
 				delta_count++;
@@ -313,6 +325,8 @@ int make_delta_to_full(const char* fname, const char* recovery_timestamp)
 
 			strcpy(recovery_fpath, dir_name);
 			strcat(recovery_fpath, "/");
+			strcat(recovery_fpath, file_name);
+			strcat(recovery_fpath, ".backup/");
 			strcat(recovery_fpath, recovery_fname);
 
 			// rprintf(FWARNING, "[yee-%s] sender.c: make_delta_to_full delta_count = 0, copy full_fname: %s to recovery_fname: %s\n", who_am_i(), full_fpath, recovery_fpath);
@@ -367,6 +381,8 @@ int make_delta_to_full(const char* fname, const char* recovery_timestamp)
 		
 		strcpy(recovery_fpath, dir_name);
 		strcat(recovery_fpath, "/");
+		strcat(recovery_fpath, file_name);
+		strcat(recovery_fpath, ".backup/");
 		strcat(recovery_fpath, recovery_fname);
 		
 		strcpy(tmp_file_name, file_name);
@@ -374,6 +390,8 @@ int make_delta_to_full(const char* fname, const char* recovery_timestamp)
 		
 		strcpy(tmp_file_path, dir_name);
 		strcat(tmp_file_path, "/");
+		strcat(tmp_file_path, file_name);
+		strcat(tmp_file_path, ".backup/");
 		strcat(tmp_file_path, tmp_file_name);
 
 		FILE *full_file = fopen(full_fpath, "rb");	// 打开全量文件 拼接的基准文件
@@ -701,7 +719,31 @@ void send_files(int f_in, int f_out)
 			// fd = do_open(fname, O_RDONLY, 0);
 			if(task_type_backup_or_recovery_sender == 1)
 			{
+				rprintf(FWARNING, "[yee-%s] sender.c: send_files recovery_files fname(before alter): %s\n", who_am_i(), fname);
+				// strcat(fname, ".recovery.tmp1");
+				char *ptr = strrchr(fname, '/');
+				char dir_name[MAXPATHLEN];
+				char file_name[MAXPATHLEN];
+
+				if(ptr != NULL)
+				{
+					strncpy(dir_name, fname, ptr - fname);
+					dir_name[ptr - fname] = '\0';
+					strcpy(file_name, ptr + 1);
+				}
+				else
+				{
+					strcpy(dir_name, ".");
+					strcpy(file_name, fname);
+				}
+
+				strcpy(fname, dir_name);
+				strcat(fname, "/");
+				strcat(fname, file_name);
+				strcat(fname, ".backup/");
+				strcat(fname, file_name);
 				strcat(fname, ".recovery.tmp1");
+				rprintf(FWARNING, "[yee-%s] sender.c: send_files recovery_files fname(after alter): %s\n", who_am_i(), fname);
 			}
 			fd = do_open(fname, O_RDONLY, 0);
 			if (fd == -1) {

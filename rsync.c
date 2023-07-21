@@ -490,6 +490,7 @@ int set_file_attrs(const char *fname, struct file_struct *file, stat_x *sxp,
 		if (dry_run)
 			return 1;
 		if (link_stat(fname, &sx2.st, 0) < 0) {
+			rprintf(FWARNING, "[yee-%s] rsync.c: set_file_attrs, link_stat %s failed \n", who_am_i(), fname);
 			rsyserr(FERROR_XFER, errno, "stat %s failed",
 				full_fname(fname));
 			return 0;

@@ -10,7 +10,10 @@ rsync -av rsync_backup@172.24.189.121::backup/test_file12 /usr/local/bin/pdtsrc/
 
 rsync -av rsync_backup@172.24.189.121::backup/ ~/test/  --password-file=/etc/rsync.password --port=874
 
-rsync -av ~/test/ rsync_backup@172.24.189.121::backup/  --password-file=/etc/rsync.password --port=874
+rsync -av ~/func_test/ rsync_backup@172.25.78.135::backup/func_test/  --password-file=/etc/rsync.password --port=874
+
+rsync -av rsync_backup@172.25.78.135::backup/func_test/ ~/func_test/  --password-file=/etc/rsync.password --port=874 --recovery_version=2023-07-21-01:29:00
+
 
 
 1 不存在全量备份文件

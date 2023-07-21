@@ -358,11 +358,17 @@ int receive_data(int f_in, char *fname_r, int fd_r, OFF_T size_r,
 
 		strcpy(delta_fname, file_name);
 		strcat(delta_fname, ".delta.");
-		strcat(delta_fname, backup_version);
+		strcat(delta_fname, backup_version);	// xxxx.delta.xxxx-xx-xx-xx:xx:xx
 
 		strcpy(delta_fpath, dir_name);
 		strcat(delta_fpath, "/");
-		strcat(delta_fpath, delta_fname);
+
+		strcat(delta_fpath, file_name);
+		strcat(delta_fpath, ".backup/");		// ./path/to/file/xxxx.backup/
+
+		strcat(delta_fpath, delta_fname);		// ./path/to/file/xxxx.backup/xxxx.delta.xxxx-xx-xx-xx:xx:xx
+
+
 		// rprintf(FWARNING, "[yee] currrent_time: %s, i am %s\n", currrent_time, who_am_i());
 		rprintf(FWARNING, "[yee-%s] delta_fname: %s delta_fpath: %s\n", who_am_i(), delta_fname, delta_fpath);
 	
@@ -411,7 +417,7 @@ int receive_data(int f_in, char *fname_r, int fd_r, OFF_T size_r,
 
 				
 				write_len = fwrite(data, 1, i, delta_fp);
-				rprintf(FWARNING, "[yee] wirte unmatch data length is %d write %d\n", i, write_len);
+				rprintf(FWARNING, "[yee-%s] wirte unmatch data length is %d write %d\n",who_am_i(), i, write_len);
 				if (write_len != i) {
 					rsyserr(FERROR_XFER, errno, "write unmatched chunk failed on %s", full_fname(delta_fname));			
 					goto report_write_error;
@@ -464,7 +470,7 @@ int receive_data(int f_in, char *fname_r, int fd_r, OFF_T size_r,
 
 			write_len = fwrite(match_chunk_id, sizeof(char)*strlen(match_chunk_id), 1, delta_fp);
 			
-			rprintf(FWARNING, "[yee] wirte match index %s write_len = %d\n", match_chunk_id, write_len);
+			rprintf(FWARNING, "[yee-%s] wirte match index %s write_len = %d\n", who_am_i(), match_chunk_id, write_len);
 
 			if(write_len != 1)
 			{
@@ -907,11 +913,12 @@ int recv_files(int f_in, int f_out, char *local_name)
 		char full_backup_name[MAXPATHLEN];			// xxxx.full.xxxx-xx-xx-xx:xx:xx
 		char full_backup_name_prefix[MAXPATHLEN];	// xxxx.full.
 
-		char full_backup_fpath[MAXPATHLEN];			// ./path/to/xxxx.full.xxxx-xx-xx-xx:xx:xx
+		char full_backup_fpath[MAXPATHLEN];			// ./path/to/xxxx.full.xxxx-xx-xx-xx:xx:xx	全量备份完整路径
 		// char full_backup_fpath_prefix[MAXPATHLEN];	// ./path/to/xxxx.full.
-		
-		char dir_name[MAXPATHLEN];					// ./path/to
-		char file_name[MAXPATHLEN];					// xxxx
+
+		char dir_name[MAXPATHLEN];					// ./path/to 文件夹名
+		char file_name[MAXPATHLEN];					// xxxx 文件名
+		char backup_path[MAXPATHLEN];				// ./path/to/xxxx.backup/ 备份文件夹
 
 		// 备份任务 全量备份文件名设置
 		if(task_type_backup_or_recovery_receiver == 0) 
@@ -938,7 +945,14 @@ int recv_files(int f_in, int f_out, char *local_name)
 
 			strcpy(full_backup_fpath, dir_name);
 			strcat(full_backup_fpath, "/");
-			strcat(full_backup_fpath, full_backup_name);	// ./path/to/xxxx.full.xxxx-xx-xx-xx:xx:xx
+
+			// 每个文件的备份文件单独放一个xxxx.backup文件夹
+			strcat(full_backup_fpath, file_name);			// ./path/to/xxxx
+			strcat(full_backup_fpath, ".backup/");			// ./path/to/xxxx.backup/
+			
+			strcpy(backup_path, full_backup_fpath);			// ./path/to/xxxx.backup/
+
+			strcat(full_backup_fpath, full_backup_name);	// ./path/to/xxxx.backup/xxxx.full.xxxx-xx-xx-xx:xx:xx
 
 			// get_current_time_for_delta(currrent_time);
 			
@@ -947,7 +961,15 @@ int recv_files(int f_in, int f_out, char *local_name)
 
 			int full_prefix_len = strlen(full_backup_name_prefix);
 
-			DIR *dir = opendir(dir_name);
+			rprintf(FWARNING, "[yee-%s] receiver.c: backup_path=%s\n", who_am_i(), backup_path);
+			DIR *dir = opendir(backup_path);
+
+			if (dir == NULL)
+			{
+				if(mkdir(backup_path, 0777) == -1)
+					rprintf(FWARNING, "[yee-%s] mkdir %s failed\n", who_am_i(), backup_path);
+				dir = opendir(backup_path);
+			}
 
 			if (dir != NULL)
 			{
@@ -1172,7 +1194,7 @@ int recv_files(int f_in, int f_out, char *local_name)
 			
 			if(full_tmp == NULL || full_backup == NULL)
 			{
-				rprintf(FWARNING, "[yee] open %s or %s failed\n", fname, full_backup_name);
+				rprintf(FWARNING, "[yee-%s] open %s or %s failed\n", who_am_i(), fname, full_backup_name);
 			}
 			else
 			{	
@@ -1181,7 +1203,7 @@ int recv_files(int f_in, int f_out, char *local_name)
 				size_t buffer_size = sizeof(buf);
 				while((read_len = fread(buf, sizeof(char), buffer_size, full_tmp)) > 0)
 				{
-					rprintf(FWARNING, "[yee] write %ld chars to %s\n", read_len, full_backup_name);
+					rprintf(FWARNING, "[yee-%s] write %ld chars to %s\n", who_am_i(), read_len, full_backup_name);
 					fwrite(buf, sizeof(char), read_len, full_backup);
 					if(read_len < buffer_size)	// 读到了文件末尾
 					{
@@ -1198,7 +1220,9 @@ int recv_files(int f_in, int f_out, char *local_name)
 
 			// finish_transfer(fname, fnametmp, fnamecmp,partialptr, file, recv_ok, 1);
 			// rprintf(FWARNING, "[yee-%s] first full backup set file attr of %s\n", who_am_i(), full_backup_name);
-			set_file_attrs(full_backup_name, file, NULL, fname, recv_ok ? ATTRS_SET_NANO : ATTRS_SKIP_MTIME);
+			// rprintf(FWARNING, "[yee-%s] first full backup set file attr of %s\n", who_am_i(), full_backup_fpath);
+			// rprintf(FWARNING, "[yee-%s] ack = %d, full_backup_name = %s, fname = %s\n", who_am_i(), recv_ok, full_backup_name, fname);
+			set_file_attrs(full_backup_fpath, file, NULL, fname, recv_ok ? ATTRS_SET_NANO : ATTRS_SKIP_MTIME);
 			// if(robust_rename(fname, full_backup_name, NULL, file->mode) < 0)
 			// {
 			// 	rprintf(FWARNING, "rename %s -> \"%s\" failed\n",
