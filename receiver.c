@@ -68,8 +68,8 @@ extern OFF_T preallocated_len;
 
 extern int source_is_remote_or_local;				// 解析命令行参数时，如果是本地文件，source_is_remote_or_local = 0;如果是远程文件，source_is_remote_or_local = 1
 int task_type_backup_or_recovery_receiver = -1;  	// 0: backup, 1: recovery
-int first_backup = -1;								// 该文件是否是第一次同步，第一次同步不需要增量信息，需要保存全量信息
 extern char *backup_version;						// 用户指定的备份版本号
+int first_backup = -1;								// 是否是第一次备份，0: 不是第一次备份，1: 是第一次备份
 
 static struct bitbag *delayed_bits = NULL;
 static int phase = 0, redoing = 0;
@@ -956,8 +956,8 @@ int recv_files(int f_in, int f_out, char *local_name)
 
 			// get_current_time_for_delta(currrent_time);
 			
-			// rprintf(FWARNING, "[yee-%s] full_backup_name_prefix: %s,full_backup_name: %s, full_backup_fpath:%s\n", 
-					// who_am_i(), full_backup_name_prefix, full_backup_name, full_backup_fpath);
+			rprintf(FWARNING, "[yee-%s] receiver.c:recv_files full_backup_name_prefix: %s,full_backup_name: %s, full_backup_fpath:%s\n", 
+					who_am_i(), full_backup_name_prefix, full_backup_name, full_backup_fpath);
 
 			int full_prefix_len = strlen(full_backup_name_prefix);
 
@@ -1186,6 +1186,7 @@ int recv_files(int f_in, int f_out, char *local_name)
 			break;
 		}
 
+		rprintf(FWARNING, "[yee-%s] receiver.c: recv_files pre_write_full_file fname = %s, first_backup = %d, whole_file = %d\n", who_am_i(), fname, first_backup, whole_file);
 		// 备份任务 并且是第一次备份 全量文件管理 将最新版本文件写入全量备份文件
 		if(task_type_backup_or_recovery_receiver == 0  && (first_backup == 1 || whole_file == 1) )	
 		{
@@ -1198,12 +1199,12 @@ int recv_files(int f_in, int f_out, char *local_name)
 			}
 			else
 			{	
-				char buf[1024];
+				char buf[1024*100];
 				size_t read_len = 0;
 				size_t buffer_size = sizeof(buf);
 				while((read_len = fread(buf, sizeof(char), buffer_size, full_tmp)) > 0)
 				{
-					rprintf(FWARNING, "[yee-%s] write %ld chars to %s\n", who_am_i(), read_len, full_backup_name);
+					rprintf(FWARNING, "[yee-%s] write_full_files write %ld chars to %s\n", who_am_i(), read_len, full_backup_name);
 					fwrite(buf, sizeof(char), read_len, full_backup);
 					if(read_len < buffer_size)	// 读到了文件末尾
 					{
