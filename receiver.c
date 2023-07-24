@@ -417,7 +417,7 @@ int receive_data(int f_in, char *fname_r, int fd_r, OFF_T size_r,
 
 				
 				write_len = fwrite(data, 1, i, delta_fp);
-				rprintf(FWARNING, "[yee-%s] wirte unmatch data length is %d write %d\n",who_am_i(), i, write_len);
+				// rprintf(FWARNING, "[yee-%s] wirte unmatch data length is %d write %d\n",who_am_i(), i, write_len);
 				if (write_len != i) {
 					rsyserr(FERROR_XFER, errno, "write unmatched chunk failed on %s", full_fname(delta_fname));			
 					goto report_write_error;
@@ -470,7 +470,7 @@ int receive_data(int f_in, char *fname_r, int fd_r, OFF_T size_r,
 
 			write_len = fwrite(match_chunk_id, sizeof(char)*strlen(match_chunk_id), 1, delta_fp);
 			
-			rprintf(FWARNING, "[yee-%s] wirte match index %s write_len = %d\n", who_am_i(), match_chunk_id, write_len);
+			// rprintf(FWARNING, "[yee-%s] wirte match index %s write_len = %d\n", who_am_i(), match_chunk_id, write_len);
 
 			if(write_len != 1)
 			{

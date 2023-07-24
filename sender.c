@@ -279,17 +279,38 @@ int make_delta_to_full(const char* fname, const char* recovery_timestamp)
 		while((ent = readdir(dir)) != NULL)
 		{
 			// rprintf(FWARNING, "[yee-%s] sender.c: make_delta_to_full ent->d_name: %s\n", who_am_i(), ent->d_name);
-			if(full_count ==0 && strncmp(ent->d_name, full_fname_prefix, strlen(full_fname_prefix)) == 0)
+			if(strncmp(ent->d_name, full_fname_prefix, strlen(full_fname_prefix)) == 0)
 			{
-				strcpy(full_fname, ent->d_name);
-				
-				strcpy(full_fpath, dir_name);
-				strcat(full_fpath, "/");
-				strcat(full_fpath, file_name);
-				strcat(full_fpath, ".backup/");
-				strcat(full_fpath, full_fname);
 
-				full_count++;
+				if(full_count == 0)	// 未找到full文件
+				{
+					strcpy(full_fname, ent->d_name);
+					
+					strcpy(full_fpath, dir_name);
+					strcat(full_fpath, "/");
+					strcat(full_fpath, file_name);
+					strcat(full_fpath, ".backup/");
+					strcat(full_fpath, full_fname);
+
+					full_count = 1;
+				}
+				else if(full_count == 1 )
+				{
+					char time_old[512], time_new[512];
+					extract_file_name_timestamp(full_fname, time_old);
+					extract_file_name_timestamp(ent->d_name, time_new);
+					if( strncmp(time_old, time_new, strlen(time_old)) < 0 )	// 找到最新的full文件
+					{
+						strcpy(full_fname, ent->d_name);
+						
+						strcpy(full_fpath, dir_name);
+						strcat(full_fpath, "/");
+						strcat(full_fpath, file_name);
+						strcat(full_fpath, ".backup/");
+						strcat(full_fpath, full_fname);
+					}
+				}
+
 			}
 			else if(strncmp(ent->d_name, delta_fname_prefix, strlen(delta_fname_prefix)) == 0)
 			{
@@ -341,7 +362,7 @@ int make_delta_to_full(const char* fname, const char* recovery_timestamp)
 
 		char full_file_timestamp[100];
 		extract_file_name_timestamp(full_fname, full_file_timestamp);
-		rprintf(FWARNING, "[yee-%s] sender.c: make_delta_to_full full_file_timestamp: %s\n", who_am_i(), full_file_timestamp);
+		// rprintf(FWARNING, "[yee-%s] sender.c: make_delta_to_full full_file_timestamp: %s\n", who_am_i(), full_file_timestamp);
 
 		// 按照文件名的时间时间戳，找到所需要的delta文件
 		char delta_file_timestamp[100];
@@ -368,10 +389,10 @@ int make_delta_to_full(const char* fname, const char* recovery_timestamp)
 		qsort(delta_name_ptrs, delta_count_in_range, sizeof(const char*), compare_delta_file_name);
 		qsort(delta_path_ptrs, delta_count_in_range, sizeof(const char*), compare_delta_file_name);
 
-		for(int i = 0; i < delta_count_in_range; i++)
-		{
-			rprintf(FWARNING, "[yee-%s] sneder.c: make_d2f delta_name_ptrs[%d]: %s\n", who_am_i(), i, delta_name_ptrs[i]);
-		}
+		// for(int i = 0; i < delta_count_in_range; i++)
+		// {
+		// 	rprintf(FWARNING, "[yee-%s] sneder.c: make_d2f delta_name_ptrs[%d]: %s\n", who_am_i(), i, delta_name_ptrs[i]);
+		// }
 
 		char recovery_fname[MAXPATHLEN], tmp_file_name[MAXPATHLEN];
 		char recovery_fpath[MAXPATHLEN], tmp_file_path[MAXPATHLEN];
@@ -402,7 +423,7 @@ int make_delta_to_full(const char* fname, const char* recovery_timestamp)
 
 		for(int i = 0; i < delta_count_in_range; i++ ) // 需要做delta_count_in_range次拼接
 		{
-			rprintf(FWARNING, "[yee-%s] sender.c: make_d2f start make delta_fpath[%d]: %s\n", who_am_i(), i, delta_path_ptrs[i]);
+			// rprintf(FWARNING, "[yee-%s] sender.c: make_d2f start make delta_fpath[%d]: %s\n", who_am_i(), i, delta_path_ptrs[i]);
 			delta_file = fopen(delta_path_ptrs[i], "r");
 			if( delta_file == NULL )
 			{
@@ -464,8 +485,9 @@ int make_delta_to_full(const char* fname, const char* recovery_timestamp)
 
 					// rprintf(FWARNING, "[yee-%s] sender.c: make_d2f match token = %d, offset = %ld, offset2 = %ld\nmap_data = \n%s\n", 
 					// 		who_am_i(), token, offset, offset2, map_data);
-					rprintf(FWARNING, "[yee-%s] sender.c: make_d2f match token = %d, offset = %ld, offset2 = %ld\n", 
-							who_am_i(), token, offset, offset2);
+
+					// rprintf(FWARNING, "[yee-%s] sender.c: make_d2f match token = %d, offset = %ld, offset2 = %ld\n", 
+					// 		who_am_i(), token, offset, offset2);
 				}
 				else if(strncmp(line, "unmatch data length\0", strlen("unmatch data length\0")) == 0) // 解析delta文件中不匹配的部分
 				{
@@ -481,8 +503,10 @@ int make_delta_to_full(const char* fname, const char* recovery_timestamp)
 
 					// rprintf(FWARNING, "[yee-%s] sender.c: make_d2f unmatch data length = %ld, offset = %ld\nunmatch_data = \n%s\n",
 					// 		 who_am_i(), unmatch_len, offset, unmatch_data);
-					rprintf(FWARNING, "[yee-%s] sender.c: make_d2f unmatch data length = %ld, offset = %ld\n",
-							 who_am_i(), unmatch_len, offset);
+
+
+					// rprintf(FWARNING, "[yee-%s] sender.c: make_d2f unmatch data length = %ld, offset = %ld\n",
+					// 		 who_am_i(), unmatch_len, offset);
 
 
 					if( fwrite(unmatch_data, 1, unmatch_len, recovery_file) != unmatch_len ) // 直接将不匹配数据写入
