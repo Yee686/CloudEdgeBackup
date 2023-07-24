@@ -437,6 +437,12 @@ int make_delta_to_full(const char* fname, const char* recovery_timestamp)
 			
 			struct map_struct *mapbuf = NULL;	// map_struct 快速找到全量文件中匹配的内容
 			int fd_full = do_open(full_fpath, O_RDONLY, 0);	// 以文件描述符的方式打开全量文件
+			if( fd_full < 0 )
+			{
+				rprintf(FWARNING, "[yee-%s] sender.c: make_delta_to_full full_file %s open failed\n", who_am_i(), full_fpath);
+				return -1;
+			}
+
 
 			// delta 文件元数据解析
 			if(fgets(line, sizeof(line), delta_file) != NULL)	
@@ -459,7 +465,7 @@ int make_delta_to_full(const char* fname, const char* recovery_timestamp)
 				int token = -1;
 				OFF_T offset = -1, offset2 = -1;
 
-				rprintf(FWARNING, "[yee-%s] sender.c: make_d2f line: %s\n", who_am_i(), line);
+				// rprintf(FWARNING, "[yee-%s] sender.c: make_d2f line: %s\n", who_am_i(), line);
 				if(strcmp(line, "\n") == 0 || strcmp(line, "\r\n") == 0)
 				{
 					continue;
@@ -475,6 +481,7 @@ int make_delta_to_full(const char* fname, const char* recovery_timestamp)
 					{
 						map_len = delta_remainder_block_length;
 					}
+					
 					
 					map_data = map_ptr(mapbuf, offset2, map_len);	// 使用offset2
 
@@ -523,10 +530,12 @@ int make_delta_to_full(const char* fname, const char* recovery_timestamp)
 			fclose(delta_file);
 			fclose(full_file);
 			fclose(recovery_file);
+			close(fd_full);
 			
 			if(i != delta_count_in_range - 1)
 			{
-				delta_file = fopen(delta_path_ptrs[i+1], "rb");
+				
+				// delta_file = fopen(delta_path_ptrs[i+1], "rb");
 
 				copy_file(recovery_fpath, tmp_file_path, -1, 0666);
 				
@@ -542,8 +551,17 @@ int make_delta_to_full(const char* fname, const char* recovery_timestamp)
 		}
 
 	} else {
-		rprintf(FWARNING, "[yee-%s] sender.c: make_delta_to_full opendir() error\n", who_am_i());
+		if (errno == ENOENT) {
+            rprintf(FWARNING, "[yee-%s] sender.c:Error: directory %s does not exist\n", who_am_i(), backup_path);
+        } else if (errno == EACCES) {
+            rprintf(FWARNING, "[yee-%s] sender.c:Error: directory %s cannot be accessed\n", who_am_i(), backup_path);
+        } else {
+            rprintf(FWARNING, "[yee-%s] sender.c:Error: failed to open directory %s, errno = %d\n", who_am_i(), backup_path, errno);
+        }
+		rprintf(FWARNING, "[yee-%s] sender.c: make_delta_to_full opendir() %s error\n", who_am_i(), backup_path);
+        // exit(EXIT_FAILURE); // 退出程序
 	}
+	closedir(dir);
 	return 0;
 }
 
@@ -649,8 +667,8 @@ void send_files(int f_in, int f_out)
 
 			// rprintf(FWARNING, "[yee-%s] sender.c: send_files fname(pre make d2f): %s\n", who_am_i(), fname);
 			if(task_type_backup_or_recovery_sender == 1)
-			{
-				rprintf(FWARNING, "[yee-%s] sender.c: send_files make d2f version = %s\n", who_am_i(), recovery_version);
+			{	
+				rprintf(FWARNING, "[yee-%s] sender.c: send_files make d2f version = %s, iflags = %d\n", who_am_i(), recovery_version, iflags);
 				make_delta_to_full(fname, recovery_version);
 			}
 

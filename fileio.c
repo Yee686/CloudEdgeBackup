@@ -285,6 +285,8 @@ char *map_ptr(struct map_struct *map, OFF_T offset, int32 len)
 
 	if (map->p_fd_offset != read_start) {
 		OFF_T ret = do_lseek(map->fd, read_start, SEEK_SET);
+		// rprintf(FWARNING, "[yee-%s] fileio.c: map_ptr: do_lseek(%d, %s, SEEK_SET) = %s\n", 
+		// who_am_i(), map->fd, big_num(read_start), big_num(ret));
 		if (ret != read_start) {
 			rsyserr(FERROR, errno, "lseek returned %s, not %s",
 				big_num(ret), big_num(read_start));
