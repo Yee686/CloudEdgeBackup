@@ -71,6 +71,10 @@ int task_type_backup_or_recovery_receiver = -1;  	// 0: backup, 1: recovery
 extern char *backup_version;						// 用户指定的备份版本号
 int first_backup = -1;								// 是否是第一次备份，0: 不是第一次备份，1: 是第一次备份
 
+extern int backup_type;
+extern int backup_version_num;
+
+
 static struct bitbag *delayed_bits = NULL;
 static int phase = 0, redoing = 0;
 static flist_ndx_list batch_redo_list;
@@ -664,6 +668,8 @@ int recv_files(int f_in, int f_out, char *local_name)
 		else
 			rprintf(FWARNING,"[yee-%s] receiver.c: recv_files this is a *recovery* task \n", who_am_i());
 	}
+
+	rprintf(FWARNING, "[yee-%s] receiver.c: recv_files backup_type=%d, backup_version_num=%d\n", who_am_i(), backup_type, backup_version_num);
 
 	// The main process of the receive side, which runs on the same host as the generate process
 	int fd1,fd2;

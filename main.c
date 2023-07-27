@@ -98,6 +98,8 @@ extern filter_rule_list daemon_filter_list;
 int source_is_remote_or_local = -1; // 解析命令行参数时，如果是本地文件，source_is_remote_or_local = 0，如果是远程文件，source_is_remote_or_local = 1
 extern char *recovery_version;
 extern char *backup_version;
+extern int backup_type;				
+extern int backup_version_num;
 
 uid_t our_uid;
 gid_t our_gid;
@@ -1027,15 +1029,19 @@ static int do_recv(int f_in, int f_out, char *local_name)
 static void do_server_recv(int f_in, int f_out, int argc, char *argv[])
 {
 	rprintf(FWARNING, "[yee-%s] main.c: do_server_recv\n", who_am_i());
-	// for(int i = 0; i < argc; i++)
-	// {
-	// 	rprintf(FWARNING, "[yee-%s] main.c:do_server_recv argv[%d] = %s\n", who_am_i(), i, argv[i]);
-	// }
+	for(int i = 0; i < argc; i++)
+	{
+		rprintf(FWARNING, "[yee-%s] main.c:do_server_recv argv[%d] = %s\n", who_am_i(), i, argv[i]);
+	}
 
 	// 如果是备份任务
 	if(source_is_remote_or_local == 0 && backup_version == NULL)
 	{
 		backup_version = argv[--argc];
+		sscanf(argv[--argc], "%d", &backup_version_num);
+		sscanf(argv[--argc], "%d", &backup_type);
+
+		
 		// for(int i = 0; i < argc; i++)
 		// {
 		// 	rprintf(FWARNING, "[yee-%s] do_server_recv argv[%d] = %s\n", who_am_i(), i, argv[i]);
