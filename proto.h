@@ -293,6 +293,7 @@ void end_progress(OFF_T size);
 void show_progress(OFF_T ofs, OFF_T size);
 int get_tmpname(char *fnametmp, const char *fname, BOOL make_unique);
 int open_tmpfile(char *fnametmp, const char *fname, struct file_struct *file);
+int mkdir_recursive(const char* path, mode_t mode);
 int receive_data(int f_in, char *fname_r, int fd_r, OFF_T size_r,
 			const char *fname, int fd, OFF_T total_size);
 void discard_receive_data(int f_in, OFF_T length);

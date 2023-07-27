@@ -52,6 +52,11 @@ extern int source_is_remote_or_local;  // 0: local, 1: remote 相较于client客
 int task_type_backup_or_recovery_sender = -1; // 0: backup, 1: recovery
 extern char *recovery_version;
 
+extern int backup_type;
+extern int backup_version_num;
+
+int recovery_type = -1;	//
+
 
 BOOL extra_flist_sending_enabled;
 
@@ -227,7 +232,7 @@ int make_delta_to_full(const char* fname, const char* recovery_timestamp)
 	// fname可能是子目录下的文件 需要分割出目录名和文件名
 	char *ptr = strrchr(fname, '/');
 	char dir_name[MAXPATHLEN];
-	char file_name[MAXPATHLEN];
+	char file_name[MAXNAMLEN];
 
 	if(ptr != NULL)
 	{
@@ -565,6 +570,40 @@ int make_delta_to_full(const char* fname, const char* recovery_timestamp)
 	return 0;
 }
 
+int decide_recovery_type(const char* dir_name, const char* file_name, char* incremental_files[], char* differental_files[])
+{
+	// 找到该文件对应的增量备份文件 incremental_files
+
+	// 找到该文件对应的差量备份文件	differental_files
+
+	// 将incremental_files和differental_files按照时间戳排序, 具有最新版本的incre/diff为对应的恢复类型
+
+	return 0;
+}
+
+int find_delta_backup(const char* fname, const char* recovery_timestamp)
+{
+	return 0;
+
+}
+
+int find_full_backup(const char* fname, const char* recovery_timestamp)
+{
+	return 0;
+
+}
+
+int combine_incremental_files()	// 增量备份文件的拼接
+{
+	return 0;
+
+}
+
+int combine_differental_files()	// 差量备份文件的拼接
+{
+	return 0;
+}
+
 void send_files(int f_in, int f_out)    
 {
 
@@ -665,10 +704,33 @@ void send_files(int f_in, int f_out)
 				continue;
 			f_name(file, fname);
 
+			// 分离出目录名和文件名
+			char *ptr = strrchr(fname, '/');
+			char dir_name[MAXPATHLEN];
+			char file_name[MAXNAMLEN];
+
+			if(ptr != NULL)
+			{
+				strncpy(dir_name, fname, ptr - fname);
+				dir_name[ptr - fname] = '\0';
+				strcpy(file_name, ptr + 1);
+			}
+			else
+			{
+				strcpy(dir_name, ".");
+				strcpy(file_name, fname);
+			}
+
+			recovery_type = -1;
+			char* incremental_files[100];
+			char* differental_files[100];
+
 			// rprintf(FWARNING, "[yee-%s] sender.c: send_files fname(pre make d2f): %s\n", who_am_i(), fname);
 			if(task_type_backup_or_recovery_sender == 1)
 			{	
 				rprintf(FWARNING, "[yee-%s] sender.c: send_files make d2f version = %s, iflags = %d\n", who_am_i(), recovery_version, iflags);
+				// recovery_type =  decide_recovery_type(dir_name, file_name, incremental_files, differental_files);
+
 				make_delta_to_full(fname, recovery_version);
 			}
 
@@ -759,35 +821,40 @@ void send_files(int f_in, int f_out)
 
 			
 			// fd = do_open(fname, O_RDONLY, 0);
-			if(task_type_backup_or_recovery_sender == 1)
+			if(task_type_backup_or_recovery_sender == 1)		// 恢复,将比对文件定向到xxxx.backup中的已拼接的全量文件
 			{
 				rprintf(FWARNING, "[yee-%s] sender.c: send_files recovery_files fname(before alter): %s\n", who_am_i(), fname);
-				// strcat(fname, ".recovery.tmp1");
-				char *ptr = strrchr(fname, '/');
-				char dir_name[MAXPATHLEN];
-				char file_name[MAXPATHLEN];
 
-				if(ptr != NULL)
-				{
-					strncpy(dir_name, fname, ptr - fname);
-					dir_name[ptr - fname] = '\0';
-					strcpy(file_name, ptr + 1);
-				}
-				else
-				{
-					strcpy(dir_name, ".");
-					strcpy(file_name, fname);
-				}
+				char recovery_fpath[MAXPATHLEN];
 
-				strcpy(fname, dir_name);
-				strcat(fname, "/");
-				strcat(fname, file_name);
-				strcat(fname, ".backup/");
-				strcat(fname, file_name);
-				strcat(fname, ".recovery.tmp1");
-				rprintf(FWARNING, "[yee-%s] sender.c: send_files recovery_files fname(after alter): %s\n", who_am_i(), fname);
+				// strcpy(recovery_fpath, dir_name);
+				// strcat(recovery_fpath, "/");
+				// strcat(recovery_fpath, file_name);
+				// strcat(recovery_fpath, ".backup/");
+				// strcat(recovery_fpath, file_name);
+				// strcat(recovery_fpath, ".recovery.tmp1");
+
+				sprintf(recovery_fpath,"%s/%s.backup/%s.recovery.tmp1", dir_name, file_name, file_name);
+
+				rprintf(FWARNING, "[yee-%s] sender.c: send_files recovery_files recovery_fpath(after alter): %s\n", who_am_i(), recovery_fpath);
+	
+				fd = do_open(recovery_fpath, O_RDONLY, 0);
 			}
-			fd = do_open(fname, O_RDONLY, 0);
+			else if(task_type_backup_or_recovery_sender == 0 && backup_type == 1)	// 差量备份,将比对文件定向到xxxx.backup.differental中的全量文件
+			{
+				char diff_full_fpath[MAXPATHLEN];
+
+				// strcpy(diff_full_fpath, dir_name);
+				// strcat(diff_full_fpath, "/");
+				// strcat(diff_full_fpath, file_name);
+				// strcat(diff_full_fpath, ".backup/diffrental/");
+				// strcat(diff_full_fpath, file_name);
+				sprintf(diff_full_fpath,"%s/%s.backup/diffrental/%s", dir_name, file_name, file_name);
+				fd = do_open(fname, O_RDONLY, 0);
+				// fd = do_open(diff_full_fpath, O_RDONLY, 0);
+			}
+			else
+				fd = do_open(fname, O_RDONLY, 0);						// 打开备份文件, 与接收的校验和比对,计算增量信息
 			if (fd == -1) {
 				if (errno == ENOENT) {
 					enum logcode c = am_daemon
