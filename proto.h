@@ -321,6 +321,17 @@ void successful_send(int ndx);
 int compare_delta_file_name(const void *a, const void *b);
 void extract_file_name_timestamp(const char *file_name, char *timestamp);
 int make_delta_to_full(const char* fname, const char* recovery_timestamp);
+int read_sort_dir_files(const char* dir_name, char* files[]);
+void print_backup_files_list(backup_files_list * backup_files);
+int decide_recovery_type(const char* dir_name, const char* file_name, 
+						backup_files_list * incremental_full_files, backup_files_list * incremental_delta_files, 
+						backup_files_list * differental_full_files, backup_files_list * differental_delta_files );
+int combine_incremental_files(const char* dir_name, const char* file_name,
+							const backup_files_list * full_files, const backup_files_list * delta_files, 
+							const char* recovery_version, char* recovery_file_path)	;
+int combine_differental_files(const char* dir_name, const char* file_name,
+							const backup_files_list * full_files, const backup_files_list * delta_files, 
+							const char* recovery_version, char* recovery_file_path)	;
 void send_files(int f_in, int f_out)    ;
 int try_bind_local(int s, int ai_family, int ai_socktype,
 		   const char *bind_addr);

@@ -914,7 +914,7 @@ int recv_files(int f_in, int f_out, char *local_name)
 		char file_name[MAXNAMLEN];					// xxxx 文件名
 		char backup_path[MAXPATHLEN];				// ./path/to/incremental(differental)/full/xxxx.backup/ 备份文件夹
 
-		// 备份任务 全量备份文件名设置
+		// 备份任务 全量备份文件夹设置
 		if(task_type_backup_or_recovery_receiver == 0) 
 		{
 			char *ptr = strrchr(fname, '/');
@@ -939,8 +939,8 @@ int recv_files(int f_in, int f_out, char *local_name)
 			// ./path/to/xxxx.backup/incremental(differental)/delta/
 			sprintf(delta_backup_fpath, "%s/%s.backup/%s/delta/", dir_name, file_name, backup_type?"differential":"incremental");
 
-			mkdir_recursive(full_backup_fpath, 0777);
-			mkdir_recursive(delta_backup_fpath, 0777);
+			mkdir_recursive(full_backup_fpath, S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH);
+			mkdir_recursive(delta_backup_fpath,S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH);
 
 			// ./path/to/xxxx.backup/incremental(differential)/full/xxxx.full.xxxx-xx-xx-xx:xx:xx
 			sprintf(full_backup_fname, "%s%s.full.%s", full_backup_fpath, file_name, backup_version);
@@ -977,8 +977,7 @@ int recv_files(int f_in, int f_out, char *local_name)
 			}
 
 		}
-			
-
+		
 		/* open the file*/
 		fd1 = do_open(fnamecmp, O_RDONLY, 0);
 
@@ -1210,13 +1209,22 @@ int recv_files(int f_in, int f_out, char *local_name)
 			// rprintf(FWARNING, "[yee-%s] first full backup set file attr of %s\n", who_am_i(), full_backup_name);
 			// rprintf(FWARNING, "[yee-%s] first full backup set file attr of %s\n", who_am_i(), full_backup_fpath);
 			// rprintf(FWARNING, "[yee-%s] ack = %d, full_backup_name = %s, fname = %s\n", who_am_i(), recv_ok, full_backup_name, fname);
+			// set_file_attrs(full_backup_fpath, file, NULL, fname, recv_ok ? ATTRS_SET_NANO : ATTRS_SKIP_MTIME);
+			// if(robust_rename(fname, full_backup_name, NULL, file->mode) < 0)
+			// {
+			// 	rprintf(FWARNING, "rename %s -> \"%s\" failed\n",
+			// 		full_fname(fname), full_backup_name);
+			// }
+		}
+		else
+		{
+			finish_transfer(fname, fnametmp, fnamecmp,partialptr, file, recv_ok, 1);
 			set_file_attrs(full_backup_fpath, file, NULL, fname, recv_ok ? ATTRS_SET_NANO : ATTRS_SKIP_MTIME);
 			// if(robust_rename(fname, full_backup_name, NULL, file->mode) < 0)
 			// {
 			// 	rprintf(FWARNING, "rename %s -> \"%s\" failed\n",
 			// 		full_fname(fname), full_backup_name);
 			// }
-			
 		}
 
 	} // 单个文件处理结束
