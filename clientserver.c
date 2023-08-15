@@ -65,6 +65,8 @@ extern gid_t our_gid;
 extern char *recovery_version;
 extern char *backup_version;
 extern int source_is_remote_or_local;
+extern int backup_type;
+extern int backup_version_num;
 
 char *auth_user;
 int read_only = 0;
@@ -232,10 +234,10 @@ int start_inband_exchange(int f_in, int f_out, const char *user, int argc, char 
 	// 	rprintf(FWARNING,"[yee-%s] main.c: do_server_sende this is a *%s* task \n", who_am_i(), "backup");
 	// else
 	// 	rprintf(FWARNING,"[yee-%s] main.c: do_server_sende this is a *%s* task \n", who_am_i(), "recovery");
-	// for(int i = 0; i < argc; i++)
-	// {
-	// 	rprintf(FWARNING, "[yee-%s] clientsever.c: start_inband_exchange: argv[%d] = %s\n", who_am_i(), i, argv[i]);
-	// }
+	for(int i = 0; i < argc; i++)
+	{
+		rprintf(FWARNING, "[yee-%s] clientsever.c: start_inband_exchange: argv[%d] = %s\n", who_am_i(), i, argv[i]);
+	}
 	// rprintf(FWARNING, "[yee-%s] clientsever.c: start_inband_exchange: recovery version = %s\n", who_am_i(), recovery_version);
 
 	assert(argc > 0 && *argv != NULL);
@@ -269,7 +271,15 @@ int start_inband_exchange(int f_in, int f_out, const char *user, int argc, char 
 	 * true set of args passed through the rsh/ssh connection;
 	 * this is a no-op for direct-socket-connection mode */
 	daemon_over_rsh = 0;
+
+	rprintf(FWARNING, "[yee-%s] clientserver.c: start_inband_exchange: pre sever_opentions sargc = %d, argc = %d\n", who_am_i(), sargc, argc);
 	server_options(sargs, &sargc);
+	rprintf(FWARNING, "[yee-%s] clientserver.c: start_inband_exchange: post sever_opentions sargc = %d, argc = %d\n", who_am_i(), sargc, argc);
+
+	for(int i = 0; i < sargc; i++)
+	{
+		rprintf(FWARNING, "[yee-%s] clientserver.c: start_inband_exchange: post sever_opentions sargs[%d] = %s\n", who_am_i(), i, sargs[i]);
+	}
 
 	if (sargc >= MAX_ARGS - 2)
 		goto arg_overflow;
@@ -298,8 +308,12 @@ int start_inband_exchange(int f_in, int f_out, const char *user, int argc, char 
 		argc--;
 	}
 
-	rprintf(FWARNING, "[yee-%s] clientsever.c: start_inband_exchange: sargc = %d, argc = %d\n", 
-			who_am_i(), sargc, argc);
+	rprintf(FWARNING, "[yee-%s] clientsever.c: start_inband_exchange: after while loop sargc = %d, argc = %d\n",who_am_i(), sargc, argc);
+	for(int i = 0; i < sargc; i++)
+	{
+		rprintf(FWARNING, "[yee-%s] clientserver.c: start_inband_exchange: after while loop sargs[%d] = %s\n", who_am_i(), i, sargs[i]);
+	}
+
 	if (source_is_remote_or_local == 1 && recovery_version != NULL)		// 还原任务	将还原版本加入参数
 	{
 		sargs[sargc++] = recovery_version;
@@ -307,6 +321,12 @@ int start_inband_exchange(int f_in, int f_out, const char *user, int argc, char 
 
 	if (source_is_remote_or_local == 0 && backup_version != NULL)		// 备份任务 将备份版本加入参数
 	{
+		char backup_type_str[20];
+		char backup_version_num_str[20];
+		sprintf(backup_type_str, "%d", backup_type);
+		sprintf(backup_version_num_str, "%d", backup_version_num);
+		sargs[sargc++] = backup_type_str;
+		sargs[sargc++] = backup_version_num_str;
 		sargs[sargc++] = backup_version;
 	}
 

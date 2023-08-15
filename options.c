@@ -182,6 +182,9 @@ char *dest_option = NULL;
 char *recovery_version = NULL;		// 用户要恢复的版本号 YYYY-mm-dd-HH:MM:SS 需要传给sender模块恢复至指定版本
 char *backup_version = NULL;		// 用户指定的的备份版本号 YYYY-mm-dd-HH:MM:SS 需要传给receiver模块恢复至指定版本
 
+int backup_type = -1;				// 备份类型 0:增量备份 1:差量备份
+int backup_version_num = 0;			// 存储端保留的备份版本数目
+
 static int remote_option_alloc = 0;
 int remote_option_cnt = 0;
 const char **remote_options = NULL;
@@ -810,6 +813,9 @@ void usage(enum logcode F)
   rprintf(F," -4, --ipv4                  prefer IPv4\n");
   rprintf(F," -6, --ipv6                  prefer IPv6\n");
   rprintf(F,"     --version               print version number\n");
+  rprintf(F,"     --backup_type=0/1       specify the type of backup, 0 is incremental backup, 1 is differental backup\n");
+  rprintf(F,"     --backup_version_num=NUM specify the number of backup version\n");
+  rprintf(F,"     --backup_version=TIME   specify the version of the file to be backuped\n" );
   rprintf(F,"     --recovery_version=TIME specify the version of the file to be recovered\n");
   rprintf(F,"(-h) --help                  show this help (-h is --help only if used alone)\n");
 
@@ -834,6 +840,8 @@ static struct poptOption long_options[] = {
   {"help",             0,  POPT_ARG_NONE,   0, OPT_HELP, 0, 0 },
   {"recovery_version", 0,  POPT_ARG_STRING, &recovery_version, 0, 0, 0},
   {"backup_version",   0,  POPT_ARG_STRING, &backup_version, 0, 0, 0},
+  {"backup_type",	   0,  POPT_ARG_INT,	&backup_type, 0, 0, 0},
+  {"backup_version_num", 0,POPT_ARG_INT, 	&backup_version_num, 0, 0, 0},
   {"version",          0,  POPT_ARG_NONE,   0, OPT_VERSION, 0, 0},
   {"verbose",         'v', POPT_ARG_NONE,   0, 'v', 0, 0 },
   {"no-verbose",       0,  POPT_ARG_VAL,    &verbose, 0, 0, 0 },

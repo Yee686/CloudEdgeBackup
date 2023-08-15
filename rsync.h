@@ -896,6 +896,16 @@ struct map_struct {
 
 #define FILTRULES_SIDES (FILTRULE_SENDER_SIDE | FILTRULE_RECEIVER_SIDE)
 
+// 最大备份数目
+#ifndef MAXBACKUPNUM
+#define MAXBACKUPNUM 100
+#endif
+// sender.c 用于存储目录信息的结构体
+typedef struct backup_files_list
+{
+	char* file_path[MAXBACKUPNUM];
+	int num;
+} backup_files_list;
 typedef struct filter_struct {
 	struct filter_struct *next;
 	char *pattern;

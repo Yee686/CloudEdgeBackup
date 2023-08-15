@@ -71,6 +71,15 @@ int task_type_backup_or_recovery_receiver = -1;  	// 0: backup, 1: recovery
 extern char *backup_version;						// 用户指定的备份版本号
 int first_backup = -1;								// 是否是第一次备份，0: 不是第一次备份，1: 是第一次备份
 
+extern int backup_type;
+extern int backup_version_num;
+
+// ./path/to/xxxx.backup/incremental(differental)/delta/								增量备份完整路径
+char delta_backup_fpath[MAXPATHLEN];					// 增量备份文件的路径
+
+//./path/to/xxxx.backup/incremental(differental)/delta/xxxx.full.xxxx-xx-xx-xx:xx:xx	增量备份完整文件名
+char delta_backup_fname[MAXPATHLEN];					// 增量备份文件的路径
+
 static struct bitbag *delayed_bits = NULL;
 static int phase = 0, redoing = 0;
 static flist_ndx_list batch_redo_list;
@@ -215,7 +224,7 @@ int open_tmpfile(char *fnametmp, const char *fname, struct file_struct *file)
 	 * correctly updated after the right owner and group info is set.
 	 * (Thanks to snabb@epipe.fi for pointing this out.) */
 	fd = do_mkstemp(fnametmp, (file->mode|added_perms) & INITACCESSPERMS);
-	rprintf(FWARNING, "[yee-%s] receiver.c: open_tmpfile fnametmp = %s, fd = %d\n", who_am_i(), fnametmp, fd);
+	// rprintf(FWARNING, "[yee-%s] receiver.c: open_tmpfile fnametmp = %s, fd = %d\n", who_am_i(), fnametmp, fd);
 #if 0
 	/* In most cases parent directories will already exist because their
 	 * information should have been previously transferred, but that may
@@ -237,19 +246,37 @@ int open_tmpfile(char *fnametmp, const char *fname, struct file_struct *file)
 	return fd;
 }
 
-// /*获取当前时间*/
-// void get_current_time_for_delta(char *str_time)
-// {
-// 	time_t current_time;
-// 	time(&current_time);
+// 递归创建目录
+int mkdir_recursive(const char* path, mode_t mode)
+{
+    char tmp[MAXPATHLEN];
+    char* p = NULL;
+    size_t len;
 
-// 	struct tm *tm = localtime(&current_time);
-
-// 	char buffer[512];
-// 	strftime(buffer, sizeof(buffer), "%Y-%m-%d-%H:%M:%S", tm);
-
-// 	strcpy(str_time, buffer);
-// }
+    snprintf(tmp, sizeof(tmp), "%s", path);
+    len = strlen(tmp);
+    if (tmp[len - 1] == '/')
+        tmp[len - 1] = 0;
+    for (p = tmp + 1; *p; p++) {
+        if (*p == '/') {
+            *p = 0;
+            int ret = mkdir(tmp, mode);
+            if (ret != 0 && errno != EEXIST) {
+				rprintf(FWARNING, "[yee-%s] receiver.c: mkdir_recursive mkdir %s failed\n", who_am_i(), tmp);
+                perror("mkdir error");
+                return -1;
+            }
+            *p = '/';
+        }
+    }
+    int ret = mkdir(tmp, mode);
+    if (ret != 0 && errno != EEXIST) {
+		rprintf(FWARNING, "[yee-%s] receiver.c: mkdir_recursive mkdir %s failed\n", who_am_i(), tmp);
+        perror("mkdir error");
+        return -1;
+    }
+    return 0;
+}
 
 // size_r 去除文件末尾空洞的文件实际长度 total_size 文件总长度，用于计算文件校验和 也就是说 size_r <= total_size
 int receive_data(int f_in, char *fname_r, int fd_r, OFF_T size_r,
@@ -335,44 +362,16 @@ int receive_data(int f_in, char *fname_r, int fd_r, OFF_T size_r,
 	}
 
 	FILE *delta_fp = NULL;
-	char dir_name[MAXPATHLEN];
-	char file_name[MAXPATHLEN];
-	char delta_fname[MAXPATHLEN];
-	char delta_fpath[MAXPATHLEN];
+	// char dir_name[MAXPATHLEN];
+	// char file_name[MAXPATHLEN];
+	// char delta_fname[MAXPATHLEN];
+	// char delta_fpath[MAXPATHLEN];
 
 	if(!task_type_backup_or_recovery_receiver && first_backup == 0) 
 	{
-		rprintf(FWARNING, "[yee-%s] receiver.c: receive_data fname = %s \n", who_am_i(), fname);
-		char *ptr = strrchr(fname, '/');
-		if(ptr != NULL)
-		{
-			strncpy(dir_name, fname, ptr - fname);
-			dir_name[ptr - fname] = '\0';
-			strcpy(file_name, ptr + 1);
-		}
-		else
-		{
-			strcpy(dir_name, ".");
-			strcpy(file_name, fname);
-		}
-
-		strcpy(delta_fname, file_name);
-		strcat(delta_fname, ".delta.");
-		strcat(delta_fname, backup_version);	// xxxx.delta.xxxx-xx-xx-xx:xx:xx
-
-		strcpy(delta_fpath, dir_name);
-		strcat(delta_fpath, "/");
-
-		strcat(delta_fpath, file_name);
-		strcat(delta_fpath, ".backup/");		// ./path/to/file/xxxx.backup/
-
-		strcat(delta_fpath, delta_fname);		// ./path/to/file/xxxx.backup/xxxx.delta.xxxx-xx-xx-xx:xx:xx
-
-
-		// rprintf(FWARNING, "[yee] currrent_time: %s, i am %s\n", currrent_time, who_am_i());
-		rprintf(FWARNING, "[yee-%s] delta_fname: %s delta_fpath: %s\n", who_am_i(), delta_fname, delta_fpath);
+		// rprintf(FWARNING, "[yee-%s] receiver.c: receive_data this is a *backup* task, backup_version = %s \n", who_am_i(), backup_version);
 	
-		delta_fp = fopen(delta_fpath, "wb");
+		delta_fp = fopen(delta_backup_fname, "wb");
 
 		// delta文件元数据信息 -- blength文件块大小
 		char file_metadata[2048];
@@ -411,7 +410,7 @@ int receive_data(int f_in, char *fname_r, int fd_r, OFF_T size_r,
 				write_len = fwrite(unmatch_info, sizeof(char)*strlen(unmatch_info), 1, delta_fp);
 				// fwrite("\n", sizeof(char)*strlen("\n"), 1, delta_fp);
 				if (write_len < 1) {
-					rsyserr(FERROR_XFER, errno, "write unmatched length and offset on %s, i am %s\n", full_fname(delta_fname), who_am_i());
+					rsyserr(FERROR_XFER, errno, "write unmatched length and offset on %s, i am %s\n", full_fname(delta_backup_fname), who_am_i());
 					goto report_write_error;
 				}
 
@@ -419,7 +418,7 @@ int receive_data(int f_in, char *fname_r, int fd_r, OFF_T size_r,
 				write_len = fwrite(data, 1, i, delta_fp);
 				// rprintf(FWARNING, "[yee-%s] wirte unmatch data length is %d write %d\n",who_am_i(), i, write_len);
 				if (write_len != i) {
-					rsyserr(FERROR_XFER, errno, "write unmatched chunk failed on %s", full_fname(delta_fname));			
+					rsyserr(FERROR_XFER, errno, "write unmatched chunk failed on %s", full_fname(delta_backup_fname));			
 					goto report_write_error;
 				}
 			}
@@ -635,6 +634,9 @@ int gen_wants_ndx(int desired_ndx, int flist_num)
 	return 0;
 }
 
+
+
+
 /**
  * main routine for receiver process.
  *
@@ -664,6 +666,8 @@ int recv_files(int f_in, int f_out, char *local_name)
 		else
 			rprintf(FWARNING,"[yee-%s] receiver.c: recv_files this is a *recovery* task \n", who_am_i());
 	}
+
+	rprintf(FWARNING, "[yee-%s] receiver.c: recv_files backup_type=%d, backup_version_num=%d\n", who_am_i(), backup_type, backup_version_num);
 
 	// The main process of the receive side, which runs on the same host as the generate process
 	int fd1,fd2;
@@ -898,29 +902,19 @@ int recv_files(int f_in, int f_out, char *local_name)
 				fnamecmp = fname;
 		}
 
-		// // 恢复任务 通过fname.delta.timestamp和fname.full.timestamp来恢复指定版本·
-		// if(task_type_backup_or_recovery_receiver == 1) 
-		// {
-		// 	rprintf(FWARNING, "[yee-%s] receiver.c: recv_files delta2full file\n", who_am_i());
-		// 	char recovery_time[512] = "2023-07-10-19:29:28\0";
-		// 	if(make_delta_to_full(fname, recovery_time) != 0)
-		// 		rprintf(FWARNING, "[yee-%s] make_delta_to_full failed\n", who_am_i());
-		// }
-		
-		// rprintf(FWARNING, "[yee-%s] sende_files fname = %s, fnamecmp = %s\n", who_am_i(), fname, fnamecmp);
-
 		first_backup = 1;					// 预设为是第一次备份,搜索文件夹存在同名.full.文件则不是第一次备份
-		char full_backup_name[MAXPATHLEN];			// xxxx.full.xxxx-xx-xx-xx:xx:xx
 		char full_backup_name_prefix[MAXPATHLEN];	// xxxx.full.
+		char full_backup_fpath[MAXPATHLEN];			// ./path/to/xxxx.backup/incremental(differental)/full/									全量备份完整路径
+		char full_backup_fname[MAXPATHLEN];			// ./path/to/xxxx.backup/incremental(differental)/full/xxxx.full.xxxx-xx-xx-xx:xx:xx	全量备份完整文件名
 
-		char full_backup_fpath[MAXPATHLEN];			// ./path/to/xxxx.full.xxxx-xx-xx-xx:xx:xx	全量备份完整路径
-		// char full_backup_fpath_prefix[MAXPATHLEN];	// ./path/to/xxxx.full.
+		strcpy(delta_backup_fpath,"");				// ./path/to/xxxx.backup/incremental(differental)/delta/								增量备份完整路径
+		strcpy(delta_backup_fname,"");				// ./path/to/xxxx.backup/incremental(differental)/delta/xxxx.full.xxxx-xx-xx-xx:xx:xx	增量备份完整文件名
 
 		char dir_name[MAXPATHLEN];					// ./path/to 文件夹名
-		char file_name[MAXPATHLEN];					// xxxx 文件名
-		char backup_path[MAXPATHLEN];				// ./path/to/xxxx.backup/ 备份文件夹
+		char file_name[MAXNAMLEN];					// xxxx 文件名
+		char backup_path[MAXPATHLEN];				// ./path/to/incremental(differental)/full/xxxx.backup/ 备份文件夹
 
-		// 备份任务 全量备份文件名设置
+		// 备份任务 全量备份文件夹设置
 		if(task_type_backup_or_recovery_receiver == 0) 
 		{
 			char *ptr = strrchr(fname, '/');
@@ -937,40 +931,32 @@ int recv_files(int f_in, int f_out, char *local_name)
 				strcpy(file_name, fname);
 			}
 
-			strcpy(full_backup_name_prefix, file_name);
-			strcat(full_backup_name_prefix, ".full.");		// xxxx.full.
+			sprintf(full_backup_name_prefix, "%s.full.", file_name);	// xxxx.full.
 
-			strcpy(full_backup_name, full_backup_name_prefix);
-			strcat(full_backup_name, backup_version);		// xxxx.full.xxxx-xx-xx-xx:xx:xx
+			// ./path/to/xxxx.backup/incremental(differental)/full/
+			sprintf(full_backup_fpath, "%s/%s.backup/%s/full/", dir_name, file_name, backup_type?"differential":"incremental");
 
-			strcpy(full_backup_fpath, dir_name);
-			strcat(full_backup_fpath, "/");
+			// ./path/to/xxxx.backup/incremental(differental)/delta/
+			sprintf(delta_backup_fpath, "%s/%s.backup/%s/delta/", dir_name, file_name, backup_type?"differential":"incremental");
 
-			// 每个文件的备份文件单独放一个xxxx.backup文件夹
-			strcat(full_backup_fpath, file_name);			// ./path/to/xxxx
-			strcat(full_backup_fpath, ".backup/");			// ./path/to/xxxx.backup/
+			mkdir_recursive(full_backup_fpath, S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH);
+			mkdir_recursive(delta_backup_fpath,S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH);
+
+			// ./path/to/xxxx.backup/incremental(differential)/full/xxxx.full.xxxx-xx-xx-xx:xx:xx
+			sprintf(full_backup_fname, "%s%s.full.%s", full_backup_fpath, file_name, backup_version);
+
+			// ./path/to/xxxx.backup/incremental(differential)/delta/xxxx.full.xxxx-xx-xx-xx:xx:xx
+			sprintf(delta_backup_fname, "%s%s.delta.%s", delta_backup_fpath, file_name, backup_version);	
 			
-			strcpy(backup_path, full_backup_fpath);			// ./path/to/xxxx.backup/
 
-			strcat(full_backup_fpath, full_backup_name);	// ./path/to/xxxx.backup/xxxx.full.xxxx-xx-xx-xx:xx:xx
-
-			// get_current_time_for_delta(currrent_time);
-			
-			rprintf(FWARNING, "[yee-%s] receiver.c:recv_files full_backup_name_prefix: %s,full_backup_name: %s, full_backup_fpath:%s\n", 
-					who_am_i(), full_backup_name_prefix, full_backup_name, full_backup_fpath);
+			// rprintf(FWARNING, "[yee-%s] receiver.c: recv_files full_backup_name_prefix: %s, full_backup_fpath:%s\n", 
+			// 		who_am_i(), full_backup_name_prefix, full_backup_fpath);
 
 			int full_prefix_len = strlen(full_backup_name_prefix);
 
-			rprintf(FWARNING, "[yee-%s] receiver.c: backup_path=%s\n", who_am_i(), backup_path);
-			DIR *dir = opendir(backup_path);
+			// rprintf(FWARNING, "[yee-%s] receiver.c: backup_path=%s\n", who_am_i(), backup_path);
 
-			if (dir == NULL)
-			{
-				if(mkdir(backup_path, 0777) == -1)
-					rprintf(FWARNING, "[yee-%s] mkdir %s failed\n", who_am_i(), backup_path);
-				dir = opendir(backup_path);
-			}
-
+			DIR *dir = opendir(full_backup_fpath);
 			if (dir != NULL)
 			{
 				struct dirent *entry;
@@ -991,8 +977,7 @@ int recv_files(int f_in, int f_out, char *local_name)
 			}
 
 		}
-			
-
+		
 		/* open the file*/
 		fd1 = do_open(fnamecmp, O_RDONLY, 0);
 
@@ -1192,11 +1177,11 @@ int recv_files(int f_in, int f_out, char *local_name)
 		if(task_type_backup_or_recovery_receiver == 0  && (first_backup == 1 || whole_file == 1) )	
 		{
 			FILE *full_tmp = fopen(fname,"rb");
-			FILE *full_backup = fopen(full_backup_fpath,"wb");
+			FILE *full_backup = fopen(full_backup_fname,"wb");
 			
 			if(full_tmp == NULL || full_backup == NULL)
 			{
-				rprintf(FWARNING, "[yee-%s] open %s or %s failed\n", who_am_i(), fname, full_backup_name);
+				rprintf(FWARNING, "[yee-%s] open %s or %s failed\n", who_am_i(), fname, full_backup_fname);
 			}
 			else
 			{	
@@ -1205,7 +1190,7 @@ int recv_files(int f_in, int f_out, char *local_name)
 				size_t buffer_size = sizeof(buf);
 				while((read_len = fread(buf, sizeof(char), buffer_size, full_tmp)) > 0)
 				{
-					rprintf(FWARNING, "[yee-%s] write_full_files write %ld chars to %s\n", who_am_i(), read_len, full_backup_name);
+					rprintf(FWARNING, "[yee-%s] write_full_files write %ld chars to %s\n", who_am_i(), read_len, full_backup_fname);
 					fwrite(buf, sizeof(char), read_len, full_backup);
 					if(read_len < buffer_size)	// 读到了文件末尾
 					{
@@ -1224,14 +1209,23 @@ int recv_files(int f_in, int f_out, char *local_name)
 			// rprintf(FWARNING, "[yee-%s] first full backup set file attr of %s\n", who_am_i(), full_backup_name);
 			// rprintf(FWARNING, "[yee-%s] first full backup set file attr of %s\n", who_am_i(), full_backup_fpath);
 			// rprintf(FWARNING, "[yee-%s] ack = %d, full_backup_name = %s, fname = %s\n", who_am_i(), recv_ok, full_backup_name, fname);
-			set_file_attrs(full_backup_fpath, file, NULL, fname, recv_ok ? ATTRS_SET_NANO : ATTRS_SKIP_MTIME);
+			// set_file_attrs(full_backup_fpath, file, NULL, fname, recv_ok ? ATTRS_SET_NANO : ATTRS_SKIP_MTIME);
 			// if(robust_rename(fname, full_backup_name, NULL, file->mode) < 0)
 			// {
 			// 	rprintf(FWARNING, "rename %s -> \"%s\" failed\n",
 			// 		full_fname(fname), full_backup_name);
 			// }
-			
 		}
+		// else
+		// {
+		// 	finish_transfer(fname, fnametmp, fnamecmp,partialptr, file, recv_ok, 1);
+		// 	set_file_attrs(full_backup_fpath, file, NULL, fname, recv_ok ? ATTRS_SET_NANO : ATTRS_SKIP_MTIME);
+		// 	// if(robust_rename(fname, full_backup_name, NULL, file->mode) < 0)
+		// 	// {
+		// 	// 	rprintf(FWARNING, "rename %s -> \"%s\" failed\n",
+		// 	// 		full_fname(fname), full_backup_name);
+		// 	// }
+		// }
 
 	} // 单个文件处理结束
 
