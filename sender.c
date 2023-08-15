@@ -570,11 +570,11 @@ int make_delta_to_full(const char* fname, const char* recovery_timestamp)
 	return 0;
 }
 
-// 读取path下的所有文件,并按照时间戳排序
+// 读取path下的所有文件,并按照时间戳排序, dir_name: 文件夹路径, files: 文件名数组
 int read_sort_dir_files(const char* dir_name, char* files[])
 {
-    DIR *dirp;
-    struct dirent *dp;
+    DIR *dirp = NULL;
+    struct dirent *dp = NULL;
     int n = 0;
 
     // 打开目录
@@ -582,8 +582,7 @@ int read_sort_dir_files(const char* dir_name, char* files[])
 		char cwd[4096];
 		getcwd(cwd, sizeof(cwd));
 		rprintf(FWARNING, "[yee-%s] sender.c: read_sort_dir_files opendir() %s error, cwd=%s\n", who_am_i(), dir_name, cwd);
-        perror("Failed to open directory");
-        return -1;
+		return -1;
     }
 
     // 统计目录下的文件数
@@ -620,7 +619,7 @@ int read_sort_dir_files(const char* dir_name, char* files[])
     return n;
 }
 
-void print_backup_files_list(backup_files_list * backup_files)
+void print_backup_files_list(const backup_files_list * backup_files)
 {
 	rprintf(FWARNING, "\n[yee-%s] sender.c: print_backup_files_list backup_files->num: %d\n", who_am_i(), backup_files->num);
 	for(int i = 0; i < backup_files->num; i++)
@@ -684,8 +683,9 @@ int decide_recovery_type(const char* dir_name, const char* file_name,
 
 		extract_file_name_timestamp(incremental_delta_files->file_path[incre_delta_count - 1], incre_delta_timestamp);
 
-		extract_file_name_timestamp(incremental_delta_files->file_path[diffe_delta_count - 1], diffe_delta_timestamp);
-
+		extract_file_name_timestamp(differental_delta_files->file_path[diffe_delta_count - 1], diffe_delta_timestamp);
+		rprintf(FWARNING, "[yee-%s] sender.c: decide_recovery_type incre_delta_timestamp: %s, diffe_delta_timestamp: %s\n", 
+				who_am_i(), incre_delta_timestamp, diffe_delta_timestamp);
 		if(strcmp(incre_delta_timestamp, diffe_delta_timestamp) >= 0)		// 增量备份delta最新 使用增量备份
 			return 0;
 		else																// 差量备份delta最新 使用差量备份
@@ -1323,24 +1323,57 @@ void send_files(int f_in, int f_out)
 
 			
 			// fd = do_open(fname, O_RDONLY, 0);
-			if(task_type_backup_or_recovery_sender == 1)		// 恢复,将比对文件定向到xxxx.backup中的已拼接的全量文件
+			rprintf(FWARNING, "[yee-%s] sender.c: task_type = %d, backup_type = %d\n", who_am_i(), task_type_backup_or_recovery_sender, backup_type);
+			if(task_type_backup_or_recovery_sender == 1)		// 恢复,待发送文件定位到xxxx.backup中的已拼接的全量文件
 			{
 				rprintf(FWARNING, "[yee-%s] sender.c: send_files recovery_files fname(before alter): %s\n", who_am_i(), fname);
 				fd = do_open(recovery_path, O_RDONLY, 0);
 			}
-			else if(task_type_backup_or_recovery_sender == 0 && backup_type == 1)	// 差量备份,将比对文件定向到xxxx.backup.differental中的全量文件
-			{
-				char diff_full_fpath[MAXPATHLEN];
+			// else if(task_type_backup_or_recovery_sender == 0 && backup_type == 1)	// 差量备份,将比对文件定向到xxxx.backup.differental中的全量文件
+			// {
+			// 	char diff_full_backup_path[MAXPATHLEN];
+			// 	char diff_newest_full_file_path[MAXPATHLEN];
 
-				// strcpy(diff_full_fpath, dir_name);
-				// strcat(diff_full_fpath, "/");
-				// strcat(diff_full_fpath, file_name);
-				// strcat(diff_full_fpath, ".backup/diffrental/");
-				// strcat(diff_full_fpath, file_name);
-				sprintf(diff_full_fpath,"%s/%s.backup/diffrental/%s", dir_name, file_name, file_name);
-				fd = do_open(fname, O_RDONLY, 0);
-				// fd = do_open(diff_full_fpath, O_RDONLY, 0);
-			}
+			// 	sprintf(diff_full_backup_path, "%s/%s.backup/differential/full/", dir_name, file_name);
+
+			// 	// int ret = access(diff_full_backup_path, F_OK) != 0;
+			// 	DIR *tmp_dir = opendir(diff_full_backup_path);
+			// 	rprintf(FWARNING, "[yee-%s] sender.c: send_files differential full backup path: %s\n", who_am_i(), diff_full_backup_path);
+
+			// 	if (tmp_dir == NULL)
+			// 	{
+			// 		char cwd[MAXPATHLEN];
+			// 		getcwd(cwd, sizeof(cwd));
+
+					
+
+			// 		if(errno == ENOENT)
+			// 		{
+			// 			rprintf(FWARNING, "[yee-%s] sender.c: send_files differential full backup path not exist\n", who_am_i());
+			// 		}
+			// 		else if(errno == EACCES)
+			// 		{
+			// 			rprintf(FWARNING, "[yee-%s] sender.c: send_files differential full backup path cannot be accessed\n", who_am_i());
+			// 		}
+			// 		else
+			// 		{
+			// 			rprintf(FWARNING, "[yee-%s] sender.c: send_files differential full backup path open failed, errno = %d\n", who_am_i(), errno);
+			// 		}
+			// 		rprintf(FWARNING, "[yee-%s] sender.c: send_files first differential backup: %s, cwd:%s\n", who_am_i(), fname, cwd);
+			// 		fd = do_open(fname, O_RDONLY, 0);
+			// 	}
+			// 	else
+			// 	{
+			// 		closedir(tmp_dir);
+			// 		int full_count = read_sort_dir_files(diff_full_backup_path, differental_full_files->file_path);
+
+			// 		strcpy(diff_newest_full_file_path, differental_full_files->file_path[full_count - 1]);
+
+			// 		rprintf(FWARNING, "[yee-%s] sender.c: send_files differential newest backup_files fname: %s\n", who_am_i(), diff_newest_full_file_path);
+
+			// 		fd = do_open(diff_newest_full_file_path, O_RDONLY, 0);
+			// 	}
+			// }
 			else
 				fd = do_open(fname, O_RDONLY, 0);						// 打开备份文件, 与接收的校验和比对,计算增量信息
 			if (fd == -1) {

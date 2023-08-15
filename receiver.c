@@ -224,7 +224,7 @@ int open_tmpfile(char *fnametmp, const char *fname, struct file_struct *file)
 	 * correctly updated after the right owner and group info is set.
 	 * (Thanks to snabb@epipe.fi for pointing this out.) */
 	fd = do_mkstemp(fnametmp, (file->mode|added_perms) & INITACCESSPERMS);
-	rprintf(FWARNING, "[yee-%s] receiver.c: open_tmpfile fnametmp = %s, fd = %d\n", who_am_i(), fnametmp, fd);
+	// rprintf(FWARNING, "[yee-%s] receiver.c: open_tmpfile fnametmp = %s, fd = %d\n", who_am_i(), fnametmp, fd);
 #if 0
 	/* In most cases parent directories will already exist because their
 	 * information should have been previously transferred, but that may
@@ -949,12 +949,12 @@ int recv_files(int f_in, int f_out, char *local_name)
 			sprintf(delta_backup_fname, "%s%s.delta.%s", delta_backup_fpath, file_name, backup_version);	
 			
 
-			rprintf(FWARNING, "[yee-%s] receiver.c:recv_files full_backup_name_prefix: %s, full_backup_fpath:%s\n", 
-					who_am_i(), full_backup_name_prefix, full_backup_fpath);
+			// rprintf(FWARNING, "[yee-%s] receiver.c: recv_files full_backup_name_prefix: %s, full_backup_fpath:%s\n", 
+			// 		who_am_i(), full_backup_name_prefix, full_backup_fpath);
 
 			int full_prefix_len = strlen(full_backup_name_prefix);
 
-			rprintf(FWARNING, "[yee-%s] receiver.c: backup_path=%s\n", who_am_i(), backup_path);
+			// rprintf(FWARNING, "[yee-%s] receiver.c: backup_path=%s\n", who_am_i(), backup_path);
 
 			DIR *dir = opendir(full_backup_fpath);
 			if (dir != NULL)
@@ -1216,16 +1216,16 @@ int recv_files(int f_in, int f_out, char *local_name)
 			// 		full_fname(fname), full_backup_name);
 			// }
 		}
-		else
-		{
-			finish_transfer(fname, fnametmp, fnamecmp,partialptr, file, recv_ok, 1);
-			set_file_attrs(full_backup_fpath, file, NULL, fname, recv_ok ? ATTRS_SET_NANO : ATTRS_SKIP_MTIME);
-			// if(robust_rename(fname, full_backup_name, NULL, file->mode) < 0)
-			// {
-			// 	rprintf(FWARNING, "rename %s -> \"%s\" failed\n",
-			// 		full_fname(fname), full_backup_name);
-			// }
-		}
+		// else
+		// {
+		// 	finish_transfer(fname, fnametmp, fnamecmp,partialptr, file, recv_ok, 1);
+		// 	set_file_attrs(full_backup_fpath, file, NULL, fname, recv_ok ? ATTRS_SET_NANO : ATTRS_SKIP_MTIME);
+		// 	// if(robust_rename(fname, full_backup_name, NULL, file->mode) < 0)
+		// 	// {
+		// 	// 	rprintf(FWARNING, "rename %s -> \"%s\" failed\n",
+		// 	// 		full_fname(fname), full_backup_name);
+		// 	// }
+		// }
 
 	} // 单个文件处理结束
 

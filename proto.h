@@ -115,6 +115,7 @@ void itemize(const char *fnamecmp, struct file_struct *file, int ndx, int statre
 	     stat_x *sxp, int32 iflags, uchar fnamecmp_type,
 	     const char *xname);
 int unchanged_file(char *fn, struct file_struct *file, STRUCT_STAT *st);
+int find_newest_full_backup(const char* fname, char* newest_full_backup);
 int atomic_create(struct file_struct *file, char *fname, const char *slnk, const char *hlnk,
 		  dev_t rdev, stat_x *sxp, int del_for_flag);
 void check_for_finished_files(int itemizing, enum logcode code, int check_redo);
@@ -322,7 +323,7 @@ int compare_delta_file_name(const void *a, const void *b);
 void extract_file_name_timestamp(const char *file_name, char *timestamp);
 int make_delta_to_full(const char* fname, const char* recovery_timestamp);
 int read_sort_dir_files(const char* dir_name, char* files[]);
-void print_backup_files_list(backup_files_list * backup_files);
+void print_backup_files_list(const backup_files_list * backup_files);
 int decide_recovery_type(const char* dir_name, const char* file_name, 
 						backup_files_list * incremental_full_files, backup_files_list * incremental_delta_files, 
 						backup_files_list * differental_full_files, backup_files_list * differental_delta_files );

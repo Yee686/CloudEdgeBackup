@@ -112,6 +112,12 @@ static int need_retouch_dir_times;
 static int need_retouch_dir_perms;
 static const char *solo_file = NULL;
 
+extern int source_is_remote_or_local;  // 0: local, 1: remote 相较于client客户端而言
+int task_type_backup_or_recovery_generator = -1; // 0: backup, 1: recovery
+
+extern int backup_type;
+extern int backup_version_num;
+
 enum nonregtype {
     TYPE_DIR, TYPE_SPECIAL, TYPE_DEVICE, TYPE_SYMLINK
 };
@@ -1167,6 +1173,60 @@ static BOOL is_below(struct file_struct *file, struct file_struct *subtree)
 		&& (!implied_dirs_are_missing || f_name_has_prefix(file, subtree));
 }
 
+int find_newest_full_backup(const char* fname, char* newest_full_backup)
+{
+	char cwd[MAXPATHLEN];
+	getcwd(cwd, MAXPATHLEN);
+
+	// rprintf(FWARNING, "[yee-%s] generator.c: find_newest_full_backup fname = %s, cwd = %s\n", who_am_i(), fname, cwd);
+	// 分离目录名和文件名
+	char *ptr = strrchr(fname, '/');
+	char dir_name[MAXPATHLEN];
+	char file_name[MAXNAMLEN];
+
+	if(ptr != NULL)
+	{
+		strncpy(dir_name, fname, ptr - fname);
+		dir_name[ptr - fname] = '\0';
+		strcpy(file_name, ptr + 1);
+	}
+	else
+	{
+		strcpy(dir_name, ".");
+		strcpy(file_name, fname);
+	}
+
+	char diff_full_backup_path[MAXPATHLEN];
+
+	sprintf(diff_full_backup_path, "%s/%s.backup/differential/full/", dir_name, file_name);
+
+	// rprintf(FWARNING, "[yee-%s] generator.c: find_newest_full_backup diff_full_backup_path = %s\n", who_am_i(), diff_full_backup_path);
+
+	if(access(diff_full_backup_path, F_OK) != 0)
+	{	
+		// 没有差异备份文件夹, 为首次备份, 则直接返回
+		rprintf(FWARNING, "[yee-%s] generator.c: find_newest_full_backup, first backup for %s\n", who_am_i(), fname);
+		return 1;
+	}
+
+	backup_files_list *differental_full_files = (backup_files_list*)malloc(sizeof(backup_files_list));
+
+	int count = read_sort_dir_files(diff_full_backup_path, differental_full_files->file_path);
+	if(count <= 0)
+	{
+		rprintf(FERROR, "[yee-%s] generator.c: find_newest_full_backup: read_sort_dir_files error\n", who_am_i());
+		return -1;
+	}
+	// rprintf(FWARNING, "[yee-%s] generator.c: find_newest_full_backup: count = %d, fname = %s\n", who_am_i(), count, differental_full_files->file_path[count-1]);
+	// differental_full_files->num = count;
+
+	// print_backup_files_list(differental_full_files);
+
+	strcpy(newest_full_backup, differental_full_files->file_path[count-1]);
+	// rprintf(FWARNING, "[yee-%s] generator.c: find_newest_full_backup: newest_full_backup = %s\n", who_am_i(), newest_full_backup);
+	return 0;
+}
+
 /* Acts on the indicated item in cur_flist whose name is fname.  If a dir,
  * make sure it exists, and has the right permissions/timestamp info.  For
  * all other non-regular files (symlinks, etc.) we create them here.  For
@@ -1821,6 +1881,28 @@ static void recv_generator(char *fname, struct file_struct *file, int ndx,
 	}
 
 	/* open the file */
+
+	// 如果是备份任务且备份类型为差量备份, 将比对文件定位到最新的全量备份文件
+	if (task_type_backup_or_recovery_generator == 0 && backup_type == 1) 
+	{
+		char newest_full_backup[MAXPATHLEN];
+		int ret = find_newest_full_backup(fname, newest_full_backup);
+		if(ret == 0)
+		{
+			strncpy(fnamecmp, newest_full_backup, MAXPATHLEN);
+			rprintf(FWARNING, "[yee-%s] generator.c: find newest full backup success, fname:%s\n",who_am_i(), fname);
+		}
+		else if(ret == -1)
+		{
+			rprintf(FWARNING, "[yee-%s] generator.c: find newest full backup failed, fname:%s\n",who_am_i(), fname);
+			perror("find newest full backup failed");
+		}
+		else if(ret == 1)
+		{
+			rprintf(FWARNING, "[yee-%s] generator.c: first backup of:%s\n", who_am_i(), fname);
+		}
+	}
+
 	if ((fd = do_open(fnamecmp, O_RDONLY, 0)) < 0) {
 		rsyserr(FERROR, errno, "failed to open %s, continuing",
 			full_fname(fnamecmp));
@@ -2182,6 +2264,21 @@ void generate_files(int f_out, const char *local_name)
 	int save_info_flist = info_levels[INFO_FLIST];
 	int save_info_progress = info_levels[INFO_PROGRESS];
 
+	if (source_is_remote_or_local == -1)
+	{
+		rprintf(FWARNING, "[yee-%s] generator.c: generate_files source_is_remote_or_local has not been set \n", who_am_i());
+	}
+	else
+	{
+		task_type_backup_or_recovery_generator = source_is_remote_or_local; 
+
+		if(task_type_backup_or_recovery_generator == 0)
+			rprintf(FWARNING,"[yee-%s] generator.c: generate_files this is a *%s* task \n", who_am_i(), "backup");
+		else
+			rprintf(FWARNING,"[yee-%s] generator.c: generate_files this is a *%s* task \n", who_am_i(), "recovery");
+	}
+
+
 	if (protocol_version >= 29) {
 		itemizing = 1;
 		maybe_ATTRS_REPORT = stdout_format_has_i ? 0 : ATTRS_REPORT;
@@ -2246,7 +2343,11 @@ void generate_files(int f_out, const char *local_name)
 			else
 				f_name(fp, fbuf);
 			ndx = cur_flist->ndx_start - 1;
+
+			// rprintf(FWARNING, "[yee-%s] generator.c: generate_files pre call recv_generator top: %s\n", who_am_i(), fbuf);
 			recv_generator(fbuf, fp, ndx, itemizing, code, f_out);
+			// rprintf(FWARNING, "[yee-%s] generator.c: generate_files after call recv_generator top: %s\n", who_am_i(), fbuf);
+			
 			if (delete_during && dry_run < 2 && !list_only
 			 && !(fp->flags & FLAG_MISSING_DIR)) {
 				if (fp->flags & FLAG_CONTENT_DIR) {
@@ -2276,7 +2377,11 @@ void generate_files(int f_out, const char *local_name)
 				strlcpy(fbuf, solo_file, sizeof fbuf);
 			else
 				f_name(file, fbuf);
+
+			// rprintf(FWARNING, "[yee-%s] generator.c: generate_files pre call recv_generator down: %s\n", who_am_i(), fbuf);
 			recv_generator(fbuf, file, ndx, itemizing, code, f_out);
+			// rprintf(FWARNING, "[yee-%s] generator.c: generate_files after call recv_generator down: %s\n", who_am_i(), fbuf);
+
 
 			check_for_finished_files(itemizing, code, 0);
 
