@@ -648,15 +648,25 @@ int decide_recovery_type(const char* dir_name, const char* file_name,
 	int incre_delta_count = 0, incre_full_count = 0;
 	int diffe_delta_count = 0, diffe_full_count = 0;
 
-	incre_full_count = read_sort_dir_files(incre_full_backup_path, incremental_full_files->file_path);
-	incre_delta_count = read_sort_dir_files(incre_delta_backup_path, incremental_delta_files->file_path);
-	diffe_full_count = read_sort_dir_files(diffe_full_backup_path, differental_full_files->file_path);
-	diffe_delta_count = read_sort_dir_files(diffe_delta_backup_path, differental_delta_files->file_path);
+	if((incre_full_count = read_sort_dir_files(incre_full_backup_path, incremental_full_files->file_path)) == -1)
+		incre_full_count = 0;
+	else
+		incremental_full_files->num = incre_full_count;
 
-	incremental_full_files->num = incre_full_count;
-	incremental_delta_files->num = incre_delta_count;
-	differental_full_files->num = diffe_full_count;
-	differental_delta_files->num = diffe_delta_count;
+	if((incre_delta_count = read_sort_dir_files(incre_delta_backup_path, incremental_delta_files->file_path)) == -1)
+		incre_delta_count = 0;
+	else
+		incremental_delta_files->num = incre_delta_count;
+
+	if((diffe_full_count = read_sort_dir_files(diffe_full_backup_path, differental_full_files->file_path)) == -1)
+		diffe_full_count = 0;
+	else
+		differental_full_files->num = diffe_full_count;
+
+	if((diffe_delta_count = read_sort_dir_files(diffe_delta_backup_path, differental_delta_files->file_path)) == -1)
+		diffe_delta_count = 0;
+	else
+		differental_delta_files->num = diffe_delta_count;
 
 	rprintf(FWARNING, "[yee-%s] sender.c: decide_recovery_type incre_full_count: %d, incre_delta_count: %d, diffe_full_count: %d, diffe_delta_count: %d\n", 
 			who_am_i(), incre_full_count, incre_delta_count, diffe_full_count, diffe_delta_count);
