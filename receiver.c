@@ -634,7 +634,51 @@ int gen_wants_ndx(int desired_ndx, int flist_num)
 	return 0;
 }
 
+/**管理备份版本 
+ * 函数的参数：backup_path 指定到对应类型的备份路径[dir_name/file.backup/incremental(differential)/]
+ * 所使用的全局变量： backup_type, backup_version_num
+ * */ 
+int manage_backup_version(const char* backup_path)
+{
+	char backup_full_path[MAXPATHLEN];
+	char backup_delta_path[MAXPATHLEN];
 
+	strcpy(backup_full_path, backup_path);
+	strlcat(backup_full_path, "full/", MAXPATHLEN);
+
+	strcpy(backup_delta_path, backup_path);
+	strlcat(backup_delta_path, "delta/", MAXPATHLEN);
+
+	backup_files_list *backup_files_list_full = (backup_files_list*)malloc(sizeof(backup_files_list));
+	backup_files_list *backup_files_list_delta = (backup_files_list*)malloc(sizeof(backup_files_list));
+
+	backup_files_list_full->num = read_sort_dir_files(backup_full_path, backup_files_list_full->file_path);
+	backup_files_list_delta->num = read_sort_dir_files(backup_delta_path, backup_files_list_delta->file_path);
+
+	if(backup_files_list_full->num <= backup_version_num && backup_files_list_delta->num <= backup_version_num)
+	{
+		// 版本数目符合要求，不需要其他操作
+		return 0;
+	}
+
+	if(backup_type == 0) // 管理差量备份文件
+	{
+		if(backup_files_list_delta->num > backup_version_num)
+		{
+			for(int i = 0; i < backup_files_list_delta->num - backup_version_num; i++)
+			{
+				remove(backup_files_list_delta->file_path[i]);
+			}
+		}
+		// TODO: 对差量备份文件中full的管理
+	}
+	else(backup_type == 1)	// 管理增量备份文件
+	{
+		// TODO: 对增量备份文件的管理
+		return -1;
+	}
+	return 0;
+}
 
 
 /**
@@ -1226,7 +1270,15 @@ int recv_files(int f_in, int f_out, char *local_name)
 		// 	// 		full_fname(fname), full_backup_name);
 		// 	// }
 		// }
-
+		if(task_type_backup_or_recovery_receiver == 0)
+		{
+			char backup_path[MAXPATHLEN];
+			sprintf(backup_path, "%s/%s.backup/%s/", dir_name, file_name, backup_type?"differential":"incremental");
+			if(manage_backup_version(backup_path) != 0)
+			{
+				rprintf(FWARNING, "[yee-%s] receiver.c: recv_files manage_backup_version %s failed\n", who_am_i(), backup_path);
+			}
+		}
 	} // 单个文件处理结束
 
 	if (make_backups < 0)
