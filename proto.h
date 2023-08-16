@@ -300,6 +300,8 @@ int receive_data(int f_in, char *fname_r, int fd_r, OFF_T size_r,
 void discard_receive_data(int f_in, OFF_T length);
 void handle_delayed_updates(char *local_name);
 int gen_wants_ndx(int desired_ndx, int flist_num);
+int update_incre_full_backup(const char* full_file_path, const char* delta_file_path);
+int manage_backup_version(const char* backup_path);
 int recv_files(int f_in, int f_out, char *local_name);
 void setup_iconv(void);
 int iconvbufs(iconv_t ic, xbuf *in, xbuf *out, int flags);

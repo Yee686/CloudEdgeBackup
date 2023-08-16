@@ -772,7 +772,7 @@ int combine_incremental_files(const char* dir_name, const char* file_name,
 	sprintf(tmp_file_path,"%s/%s.backup/%s.%s", dir_name, file_name, file_name, "recovery.tmp");
 	
 	strcpy(full_file_path, full_files->file_path[full_index]);
-
+ 
 	FILE *full_file = fopen(full_file_path, "rb");
 	FILE *delta_file = NULL;
 	FILE *recovery_file = fopen(recovery_file_path, "wb");
@@ -792,7 +792,7 @@ int combine_incremental_files(const char* dir_name, const char* file_name,
 		rprintf(FWARNING,"[yee-%s] sender.c: combine_incremental_files in loop delta_file[%d] %s\n", who_am_i(), delta_index, delta_files->file_path[delta_index]);
 		
 		strcpy(delta_file_path, delta_files->file_path[delta_index]);
-		delta_file = fopen(delta_file_path, "r");
+		delta_file = fopen(delta_file_path, "rb");
 
 		if( delta_file == NULL )
 		{

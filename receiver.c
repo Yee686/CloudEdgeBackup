@@ -634,6 +634,110 @@ int gen_wants_ndx(int desired_ndx, int flist_num)
 	return 0;
 }
 
+// 更新全量版本文件, 即一次拼接
+int update_incre_full_backup(const char* full_file_path, const char* delta_file_path)
+{
+	char updated_full_file_path[MAXPATHLEN];	// 新的全量文件路径
+	char new_timestamp[MAXPATHLEN];				// 新的全量文件的时间戳
+
+	extract_file_name_timestamp(delta_file_path, new_timestamp);
+
+	// 分离目录和文件名
+	char *ptr = strrchr(delta_file_path, '/');
+	char dir_name[MAXPATHLEN];				// 目录名 /path/to/fold
+	char file_name[MAXPATHLEN];				// 文件名 filename.delta.timestamp
+	if(ptr != NULL)
+	{
+		strncpy(dir_name, full_file_path, ptr - full_file_path);
+		dir_name[ptr - full_file_path] = '\0';
+		strcpy(file_name, ptr + 1);
+	}
+	else
+	{
+		strcpy(dir_name, ".");
+		strcpy(file_name, full_file_path);
+	}
+
+	// 删除.delta.timestamp部分, 获取原始文件名
+	char *dot_pos = strchr(file_name, '.');
+	dot_pos = '\0';
+
+	// 构建新的全量文件名
+	sprintf(updated_full_file_path, "%s/%s.full.%s", dir_name, file_name, new_timestamp);
+
+	FILE *delta_file = fopen(delta_file_path, "rb");
+	FILE *updated_full_file = fopen(updated_full_file_path, "wb");
+	int full_fd = do_open(full_file_path, O_RDONLY, 0);
+
+	if(delta_file == NULL || full_fd < 0)
+	{
+		rprintf(FWARNING, "[yee-%s] receiver.c: updata_incre_full_backup open file failed\n", who_am_i());
+		return -1;
+	}
+
+	char line[1024*100];																	// delta行读取缓冲区
+	int delta_block_length = -1, delta_block_count = -1, delta_remainder_block_length = -1; // delta文件元数据 块大小 块数量 剩余块大小
+	OFF_T total_size = -1, content_size = -1;	// delta文件元数据 偏移量 总大小 内容大小
+
+	int32 read_size = MAX(delta_block_length*2, 16*1024);
+	struct map_struct *mapbuf = map_file(full_fd, content_size, read_size, delta_block_length);	// 构建map_struct 以供map_ptr使用
+
+	// delta 增量信息解析
+	while (fgets(line, sizeof(line), delta_file) != NULL)
+	{ 
+		int token = -1;
+		OFF_T offset = -1, offset2 = -1;
+
+		if(strcmp(line, "\n") == 0 || strcmp(line, "\r\n") == 0)
+		{
+			continue;
+		}
+		else if(strncmp(line, "match token\0", strlen("match token\0")) == 0)	// 解析delta文件中匹配的部分 token
+		{
+			char *map_data = NULL;
+			size_t map_len = -1;
+			sscanf(line, "match token = %d, offset = %ld, offset2 = %ld\n", &token, &offset, &offset2);
+			
+			map_len = delta_block_length;
+			if( token == delta_block_count - 1 && delta_remainder_block_length != 0)
+			{
+				map_len = delta_remainder_block_length;
+			}
+						
+			map_data = map_ptr(mapbuf, offset2, map_len);	// 使用offset2
+
+			if( map_data != NULL && fwrite(map_data, 1, map_len, updated_full_file) != map_len )
+			{
+				rprintf(FWARNING, "[yee-%s] sender.c: make_d2f fwrite match data error\n", who_am_i());
+			}
+		}
+		else if(strncmp(line, "unmatch data length\0", strlen("unmatch data length\0")) == 0) // 解析delta文件中不匹配的部分
+		{
+
+			char unmatch_data[1024*1000];	// 不匹配数据缓冲区
+			size_t unmatch_len = 0;			// 读取长度
+			sscanf(line, "unmatch data length = %ld, offset = %ld\n", &unmatch_len, &offset);
+
+			if( fread(unmatch_data, 1, unmatch_len, delta_file) != unmatch_len )
+			{
+				rprintf(FWARNING, "[yee-%s] sender.c: make_d2f fread unmatch data length error\n", who_am_i());
+			}
+
+			if( fwrite(unmatch_data, 1, unmatch_len, updated_full_file) != unmatch_len ) // 直接将不匹配数据写入
+			{
+				rprintf(FWARNING, "[yee-%s] sender.c: make_d2f fwrite unmatch data length error\n", who_am_i());
+			}
+		}
+		else
+		{
+			rprintf(FWARNING, "[yee-%s] sender.c: make_d2f line: %s is illegal\n", who_am_i(), line);
+		}
+	}
+	fclose(delta_file);
+	fclose(updated_full_file);
+	close(full_fd);
+}
+
 /**管理备份版本 
  * 函数的参数：backup_path 指定到对应类型的备份路径[dir_name/file.backup/incremental(differential)/]
  * 所使用的全局变量： backup_type, backup_version_num
@@ -663,19 +767,72 @@ int manage_backup_version(const char* backup_path)
 
 	if(backup_type == 0) // 管理差量备份文件
 	{
-		if(backup_files_list_delta->num > backup_version_num)
+		int i = 0;
+
+		if(backup_files_list_full->num > backup_version_num) 	// 如果全量备份数超过最大值, 删除最旧的全量版本
 		{
-			for(int i = 0; i < backup_files_list_delta->num - backup_version_num; i++)
+			char full_timestamp_0[MAXPATHLEN], full_timestamp_1[MAXPATHLEN];
+
+			extract_file_name_timestamp(backup_files_list_full->file_path[0], full_timestamp_0);
+			extract_file_name_timestamp(backup_files_list_full->file_path[1], full_timestamp_1);
+
+			remove(backup_files_list_full->file_path[0]);
+
+			for( ; i < backup_files_list_delta->num; i++)	// 删除差量备份文件中对应的全量备份文件, i同时计数
 			{
-				remove(backup_files_list_delta->file_path[i]);
+				char delta_timestamp[MAXPATHLEN];
+				extract_file_name_timestamp(backup_files_list_delta->file_path[i], delta_timestamp);
+
+				if(strcmp(full_timestamp_1, delta_timestamp) >= 0)
+				{
+					remove(backup_files_list_delta->file_path[i]);
+				}
+				else
+					break;
 			}
 		}
-		// TODO: 对差量备份文件中full的管理
+
+		if(backup_files_list_delta->num - i > backup_version_num)	// 如果差量备份数超过最大值, 删除最旧的差量版本
+		{
+			remove(backup_files_list_delta->file_path[i]);
+		}
 	}
-	else(backup_type == 1)	// 管理增量备份文件
+	else if(backup_type == 1)	// 管理增量备份文件
 	{
-		// TODO: 对增量备份文件的管理
-		return -1;
+		int i = 0;		// i计数增量备份文件
+		int j = 0;		// j计数全量备份文件
+
+		if(backup_files_list_full->num > backup_version_num) 	// 如果全量备份数超过最大值, 删除最旧的全量版本, 不涉及拼接操作
+		{
+			char full_timestamp_0[MAXPATHLEN], full_timestamp_1[MAXPATHLEN];
+
+			extract_file_name_timestamp(backup_files_list_full->file_path[0], full_timestamp_0);
+			extract_file_name_timestamp(backup_files_list_full->file_path[1], full_timestamp_1);
+
+			remove(backup_files_list_full->file_path[0]);
+			j = 1;
+
+			for( ; i < backup_files_list_delta->num; i++)	// 删除增量量备份文件中对应的全量备份文件, i同时计数
+			{
+				char delta_timestamp[MAXPATHLEN];
+				extract_file_name_timestamp(backup_files_list_delta->file_path[i], delta_timestamp);
+
+				if(strcmp(full_timestamp_1, delta_timestamp) >= 0)
+				{
+					remove(backup_files_list_delta->file_path[i]);
+				}
+				else
+					break;
+			}
+		}
+
+		if(backup_files_list_delta->num - i > backup_version_num)	// 如果差量备份数超过最大值, 删除最旧的差量版本, 涉及拼接操作
+		{
+			
+			update_incre_full_backup(backup_files_list_full->file_path[j], backup_files_list_delta->file_path[i]);	// 更新用于比较的上一次全量备份文件
+			remove(backup_files_list_delta->file_path[i]);			// 删除最旧的增量版本
+		}
+
 	}
 	return 0;
 }
