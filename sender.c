@@ -55,7 +55,7 @@ extern char *recovery_version;
 extern int backup_type;
 extern int backup_version_num;
 
-int recovery_type = -1;	//
+int recovery_type = -1;	// 0 使用增量备份文件, 1 使用差量备份文件
 
 
 BOOL extra_flist_sending_enabled;
@@ -631,7 +631,8 @@ void print_backup_files_list(const backup_files_list * backup_files)
 // 恢复时,选用的备份文件类型  0: incremental 使用增量备份, 	 	1: differential 使用差量备份
 int decide_recovery_type(const char* dir_name, const char* file_name, 
 						backup_files_list * incremental_full_files, backup_files_list * incremental_delta_files, 
-						backup_files_list * differental_full_files, backup_files_list * differental_delta_files )
+						backup_files_list * differential_full_files, backup_files_list * differential_delta_files, 
+						const char* recovery_timestamp )
 {
 	// 生成备份文件路径
 	char incre_full_backup_path[MAXPATHLEN];
@@ -658,15 +659,15 @@ int decide_recovery_type(const char* dir_name, const char* file_name,
 	else
 		incremental_delta_files->num = incre_delta_count;
 
-	if((diffe_full_count = read_sort_dir_files(diffe_full_backup_path, differental_full_files->file_path)) == -1)
+	if((diffe_full_count = read_sort_dir_files(diffe_full_backup_path, differential_full_files->file_path)) == -1)
 		diffe_full_count = 0;
 	else
-		differental_full_files->num = diffe_full_count;
+		differential_full_files->num = diffe_full_count;
 
-	if((diffe_delta_count = read_sort_dir_files(diffe_delta_backup_path, differental_delta_files->file_path)) == -1)
+	if((diffe_delta_count = read_sort_dir_files(diffe_delta_backup_path, differential_delta_files->file_path)) == -1)
 		diffe_delta_count = 0;
 	else
-		differental_delta_files->num = diffe_delta_count;
+		differential_delta_files->num = diffe_delta_count;
 
 	rprintf(FWARNING, "[yee-%s] sender.c: decide_recovery_type incre_full_count: %d, incre_delta_count: %d, diffe_full_count: %d, diffe_delta_count: %d\n", 
 			who_am_i(), incre_full_count, incre_delta_count, diffe_full_count, diffe_delta_count);
@@ -690,15 +691,47 @@ int decide_recovery_type(const char* dir_name, const char* file_name,
 	{
 		char incre_delta_timestamp[100];
 		char diffe_delta_timestamp[100];
+		int find_incre_delta = 0, find_diffe_delta = 0;
 
-		extract_file_name_timestamp(incremental_delta_files->file_path[incre_delta_count - 1], incre_delta_timestamp);
+		for(int i = incre_delta_count; i != 0; i--)
+		{
+			extract_file_name_timestamp(incremental_delta_files->file_path[i - 1], incre_delta_timestamp);
+			if(strcmp(incre_delta_timestamp, recovery_timestamp) <= 0)
+			{
+				find_incre_delta = 1;
+				break;
+			}
+		}
 
-		extract_file_name_timestamp(differental_delta_files->file_path[diffe_delta_count - 1], diffe_delta_timestamp);
+		for(int i = diffe_delta_count; i != 0; i--)
+		{
+			extract_file_name_timestamp(differential_delta_files->file_path[i - 1], diffe_delta_timestamp);
+			if(strcmp(diffe_delta_timestamp, recovery_timestamp) <= 0)
+			{
+				find_diffe_delta = 1;
+				break;
+			}
+		}
+
+		if(find_diffe_delta == 0 && find_incre_delta == 0)					// 增量备份delta和差量备份delta都不符合要求
+		{
+			rprintf(FWARNING, "[yee-%s] sender.c: decide_recovery_type find_diffe_delta == 0 && find_incre_delta == 0\n", who_am_i());
+			return -1;
+		}
+		else if(find_diffe_delta == 0 && find_incre_delta == 1)				// 差量备份delta不符合要求, 使用增量备份
+		{
+			return 0;
+		}
+		else if(find_diffe_delta == 1 && find_incre_delta == 0)				// 增量备份delta不符合要求, 使用差量备份
+		{
+			return 1;
+		}
+
 		rprintf(FWARNING, "[yee-%s] sender.c: decide_recovery_type incre_delta_timestamp: %s, diffe_delta_timestamp: %s\n", 
 				who_am_i(), incre_delta_timestamp, diffe_delta_timestamp);
-		if(strcmp(incre_delta_timestamp, diffe_delta_timestamp) >= 0)		// 增量备份delta最新 使用增量备份
+		if(strcmp(incre_delta_timestamp, diffe_delta_timestamp) > 0)		// 增量备份delta最新 使用增量备份
 			return 0;
-		else																// 差量备份delta最新 使用差量备份
+		else																// 差量备份delta最新(或差量与增量delta版本一致) 使用差量备份
 			return 1;
 			
 	}
@@ -737,6 +770,7 @@ int combine_incremental_files(const char* dir_name, const char* file_name,
 		}
 
 	}
+	rprintf(FWARNING, "[yee-%s] sender.c: combine_incremental_files full_index: %d, full_timestamp = %s\n", who_am_i(), full_index, full_timestamp);
 	if( find_full == 0 )	// 没有找到满足要求的full文件
 	{
 		rprintf(FWARNING, "[yee-%s] sender.c: combine_incremental_files full file %s not find\n", who_am_i(), recovery_version);
@@ -747,6 +781,8 @@ int combine_incremental_files(const char* dir_name, const char* file_name,
 	for(delta_index = delta_count; delta_index; delta_index--)
 	{
 		extract_file_name_timestamp(delta_files->file_path[delta_index - 1], delta_timestamp);
+		rprintf(FWARNING, "[yee-%s] sender.c: combine_incremental_files delta_index: %d, delta_timestamp = %s, recovery_version = %s\n", 
+			who_am_i(), delta_index, delta_timestamp, recovery_version);
 		if(delta_index_end == -1 && strcmp(delta_timestamp, recovery_version) <= 0)	// 找到增量文件的结束位置
 		{
 			delta_index_end = delta_index - 1;
@@ -755,12 +791,13 @@ int combine_incremental_files(const char* dir_name, const char* file_name,
 		{
 			delta_index_start = delta_index - 1;
 		}
-		else
+		else if(delta_index_end != -1)
 		{
 			break;
 		}
 	}
-	if(delta_index_start == -1 || delta_index_end == -1 || delta_index_start >= delta_index_end)	// 增量版本号不满足要求
+	rprintf(FWARNING, "[yee-%s] sender.c: combine_incremental_files delta_index_start: %d, delta_index_end: %d\n", who_am_i(), delta_index_start, delta_index_end);
+	if(delta_index_start == -1 || delta_index_end == -1 || delta_index_start > delta_index_end)	// 增量版本号不满足要求
 	{
 		strcpy(recovery_file_path, full_files->file_path[full_index]);
 		return 0;
@@ -1202,8 +1239,8 @@ void send_files(int f_in, int f_out)
 
 			backup_files_list *incremental_full_files = (backup_files_list*)malloc(sizeof(backup_files_list));
 			backup_files_list *incremental_delta_files = (backup_files_list*)malloc(sizeof(backup_files_list));
-			backup_files_list *differental_full_files = (backup_files_list*)malloc(sizeof(backup_files_list));
-			backup_files_list *differental_delta_files = (backup_files_list*)malloc(sizeof(backup_files_list));
+			backup_files_list *differential_full_files = (backup_files_list*)malloc(sizeof(backup_files_list));
+			backup_files_list *differential_delta_files = (backup_files_list*)malloc(sizeof(backup_files_list));
 
 			char recovery_path[MAXPATHLEN] = "";
 
@@ -1217,12 +1254,13 @@ void send_files(int f_in, int f_out)
 					{
 						rprintf(FWARNING, "[yee-%s] sender.c: send_files make d2f dir_name = %s, file_name = %s\n", who_am_i(), dir_name, file_name);
 						rprintf(FWARNING, "[yee-%s] sender.c: send_files make d2f version = %s, iflags = %d\n", who_am_i(), recovery_version, iflags);
-						recovery_type =  decide_recovery_type(dir_name, file_name, incremental_full_files, incremental_delta_files, differental_full_files, differental_delta_files);
+						recovery_type =  decide_recovery_type(dir_name, file_name, incremental_full_files, incremental_delta_files, 
+																differential_full_files, differential_delta_files, recovery_version);
 						rprintf(FWARNING, "[yee-%s] sender.c: send_files recovery_type = %d\n", who_am_i(), recovery_type);
 						// print_backup_files_list(incremental_full_files);
 						// print_backup_files_list(incremental_delta_files);
-						// print_backup_files_list(differental_full_files);
-						// print_backup_files_list(differental_delta_files);
+						// print_backup_files_list(differential_full_files);
+						// print_backup_files_list(differential_delta_files);
 						if(recovery_type == 0)		// 使用增量备份
 						{
 							if(combine_incremental_files(dir_name, file_name, incremental_full_files, incremental_delta_files, recovery_version, recovery_path) != 0)
@@ -1232,7 +1270,7 @@ void send_files(int f_in, int f_out)
 						}
 						else if(recovery_type == 1)	// 使用差量备份
 						{
-							if(combine_differental_files(dir_name, file_name, differental_full_files, differental_delta_files, recovery_version, recovery_path) != 0)
+							if(combine_differental_files(dir_name, file_name, differential_full_files, differential_delta_files, recovery_version, recovery_path) != 0)
 							{
 								rprintf(FWARNING, "[yee-%s] sender.c: send_files combine_differental_files error\n", who_am_i());
 							}
@@ -1337,6 +1375,7 @@ void send_files(int f_in, int f_out)
 			if(task_type_backup_or_recovery_sender == 1)		// 恢复,待发送文件定位到xxxx.backup中的已拼接的全量文件
 			{
 				rprintf(FWARNING, "[yee-%s] sender.c: send_files recovery_files fname(before alter): %s\n", who_am_i(), fname);
+				rprintf(FWARNING, "[yee-%s] sender.c: send_files recovery_files recovery_path: %s\n", who_am_i(), recovery_path);
 				fd = do_open(recovery_path, O_RDONLY, 0);
 			}
 			// else if(task_type_backup_or_recovery_sender == 0 && backup_type == 1)	// 差量备份,将比对文件定向到xxxx.backup.differental中的全量文件
@@ -1375,9 +1414,9 @@ void send_files(int f_in, int f_out)
 			// 	else
 			// 	{
 			// 		closedir(tmp_dir);
-			// 		int full_count = read_sort_dir_files(diff_full_backup_path, differental_full_files->file_path);
+			// 		int full_count = read_sort_dir_files(diff_full_backup_path, differential_full_files->file_path);
 
-			// 		strcpy(diff_newest_full_file_path, differental_full_files->file_path[full_count - 1]);
+			// 		strcpy(diff_newest_full_file_path, differential_full_files->file_path[full_count - 1]);
 
 			// 		rprintf(FWARNING, "[yee-%s] sender.c: send_files differential newest backup_files fname: %s\n", who_am_i(), diff_newest_full_file_path);
 
@@ -1462,8 +1501,8 @@ void send_files(int f_in, int f_out)
 
 			free(incremental_full_files);
 			free(incremental_delta_files);
-			free(differental_full_files);
-			free(differental_delta_files);
+			free(differential_full_files);
+			free(differential_delta_files);
 
 			if (DEBUG_GTE(SEND, 1))
 				rprintf(FINFO, "sender finished %s%s%s\n", path,slash,fname);
