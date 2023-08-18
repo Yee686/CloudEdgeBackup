@@ -328,7 +328,8 @@ int read_sort_dir_files(const char* dir_name, char* files[]);
 void print_backup_files_list(const backup_files_list * backup_files);
 int decide_recovery_type(const char* dir_name, const char* file_name, 
 						backup_files_list * incremental_full_files, backup_files_list * incremental_delta_files, 
-						backup_files_list * differental_full_files, backup_files_list * differental_delta_files );
+						backup_files_list * differential_full_files, backup_files_list * differential_delta_files, 
+						const char* recovery_timestamp );
 int combine_incremental_files(const char* dir_name, const char* file_name,
 							const backup_files_list * full_files, const backup_files_list * delta_files, 
 							const char* recovery_version, char* recovery_file_path)	;
