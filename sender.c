@@ -672,27 +672,29 @@ int decide_recovery_type(const char* dir_name, const char* file_name,
 	rprintf(FWARNING, "[yee-%s] sender.c: decide_recovery_type incre_full_count: %d, incre_delta_count: %d, diffe_full_count: %d, diffe_delta_count: %d\n", 
 			who_am_i(), incre_full_count, incre_delta_count, diffe_full_count, diffe_delta_count);
 
-	if(incre_full_count == 0 && diffe_full_count == 0)
+	if(incre_full_count == 0 && diffe_full_count == 0)		// 增量备份和差量备份都不存在
 	{
 		return -1;
 	}
-	else if(incre_full_count == 0 && diffe_full_count != 0) // 使用差量备份
+	else if(incre_full_count == 0 && diffe_full_count != 0) // 无增量备份,使用差量备份
 	{
 		rprintf(FWARNING, "[yee-%s] sender.c: decide_recovery_type incre_full_count == 0\n", who_am_i());
 		return 1;
 	}
-		
-	else if(incre_full_count != 0 && diffe_full_count == 0) // 使用增量备份
+	else if(incre_full_count != 0 && diffe_full_count == 0) // 无差量备份,使用增量备份
 	{
 		rprintf(FWARNING, "[yee-%s] sender.c: decide_recovery_type diffe_full_count == 0\n", who_am_i());
 		return 0;
 	}
-	else
+	else	// 增量备份和差量备份都存在
 	{
-		char incre_delta_timestamp[100];
-		char diffe_delta_timestamp[100];
+		/*找delta文件的版本*/
+		char incre_delta_timestamp[100] = "\0";
+		char diffe_delta_timestamp[100] = "\0";
 		int find_incre_delta = 0, find_diffe_delta = 0;
 
+
+		// 找到增量备份和差量备份的delta文件中, 最新的时间戳小于等于恢复版本号的文件 delta_timestamp <= recovery_timestamp
 		for(int i = incre_delta_count; i != 0; i--)
 		{
 			extract_file_name_timestamp(incremental_delta_files->file_path[i - 1], incre_delta_timestamp);
@@ -713,27 +715,77 @@ int decide_recovery_type(const char* dir_name, const char* file_name,
 			}
 		}
 
-		if(find_diffe_delta == 0 && find_incre_delta == 0)					// 增量备份delta和差量备份delta都不符合要求
+		/*找full文件的版本*/
+		char incre_full_timestamp[100] = "\0";
+		char diffe_full_timestamp[100] = "\0";
+		int find_incre_full = 0, find_diffe_full = 0;
+
+		for(int i = incre_full_count; i != 0; i--)
 		{
-			rprintf(FWARNING, "[yee-%s] sender.c: decide_recovery_type find_diffe_delta == 0 && find_incre_delta == 0\n", who_am_i());
-			return -1;
+			extract_file_name_timestamp(incremental_full_files->file_path[i - 1], incre_full_timestamp);
+			if(strcmp(incre_full_timestamp, recovery_timestamp) <= 0)
+			{
+				find_incre_full = 1;
+				break;
+			}
 		}
-		else if(find_diffe_delta == 0 && find_incre_delta == 1)				// 差量备份delta不符合要求, 使用增量备份
+
+		for(int i = diffe_full_count; i != 0; i--)
+		{
+			extract_file_name_timestamp(differential_full_files->file_path[i - 1], diffe_full_timestamp);
+			if(strcmp(diffe_full_timestamp, recovery_timestamp) <= 0)
+			{
+				find_diffe_full = 1;
+				break;
+			}
+		}
+
+
+		if(find_incre_delta == 0 && find_diffe_delta == 0)
+		{
+			if(find_incre_full == 1 && find_diffe_full == 1)
+			{
+				if(strcmp(incre_full_timestamp, diffe_full_timestamp) > 0)	// 增量备份full最新 使用增量备份
+					return 0;
+				else														// 差量备份full最新 使用差量备份
+					return 1;
+			}
+			else if(find_incre_full == 1 && find_diffe_full == 0)
+			{
+				return 0;
+			}
+			else if(find_incre_full == 0 && find_diffe_full == 1)
+			{
+				return 1;
+			}
+			else
+			{	
+				return -1;
+			}
+		}
+		else if(find_incre_delta == 0 && find_diffe_delta == 1)				// 无合规的增量备份delta
+		{
+			if(find_incre_full == 1)
+				return 0;
+			else
+				return 1;
+		}
+		else if(find_incre_delta == 1 && find_diffe_delta == 0)				// 无合规的差量备份delta
+		{
+			if(find_diffe_full == 1)
+				return 1;
+			else
+				return 0;
+		}
+		else if(strcmp(incre_delta_timestamp, diffe_delta_timestamp) > 0)	// 增量备份delta最新 使用增量备份
 		{
 			return 0;
-		}
-		else if(find_diffe_delta == 1 && find_incre_delta == 0)				// 增量备份delta不符合要求, 使用差量备份
+		}	
+		else																// 差量备份delta最新(或差量与增量delta版本一致) 使用差量备份
 		{
 			return 1;
 		}
 
-		rprintf(FWARNING, "[yee-%s] sender.c: decide_recovery_type incre_delta_timestamp: %s, diffe_delta_timestamp: %s\n", 
-				who_am_i(), incre_delta_timestamp, diffe_delta_timestamp);
-		if(strcmp(incre_delta_timestamp, diffe_delta_timestamp) > 0)		// 增量备份delta最新 使用增量备份
-			return 0;
-		else																// 差量备份delta最新(或差量与增量delta版本一致) 使用差量备份
-			return 1;
-			
 	}
 }
 
@@ -1256,7 +1308,7 @@ void send_files(int f_in, int f_out)
 						rprintf(FWARNING, "[yee-%s] sender.c: send_files make d2f version = %s, iflags = %d\n", who_am_i(), recovery_version, iflags);
 						recovery_type =  decide_recovery_type(dir_name, file_name, incremental_full_files, incremental_delta_files, 
 																differential_full_files, differential_delta_files, recovery_version);
-						rprintf(FWARNING, "[yee-%s] sender.c: send_files recovery_type = %d\n", who_am_i(), recovery_type);
+						rprintf(FWARNING, "[yee-%s] sender.c: send_files recovery_type = *%s*\n", who_am_i(), recovery_type?"diffe 差量备份":"incre 增量备份");
 						// print_backup_files_list(incremental_full_files);
 						// print_backup_files_list(incremental_delta_files);
 						// print_backup_files_list(differential_full_files);
@@ -1378,51 +1430,7 @@ void send_files(int f_in, int f_out)
 				rprintf(FWARNING, "[yee-%s] sender.c: send_files recovery_files recovery_path: %s\n", who_am_i(), recovery_path);
 				fd = do_open(recovery_path, O_RDONLY, 0);
 			}
-			// else if(task_type_backup_or_recovery_sender == 0 && backup_type == 1)	// 差量备份,将比对文件定向到xxxx.backup.differental中的全量文件
-			// {
-			// 	char diff_full_backup_path[MAXPATHLEN];
-			// 	char diff_newest_full_file_path[MAXPATHLEN];
 
-			// 	sprintf(diff_full_backup_path, "%s/%s.backup/differential/full/", dir_name, file_name);
-
-			// 	// int ret = access(diff_full_backup_path, F_OK) != 0;
-			// 	DIR *tmp_dir = opendir(diff_full_backup_path);
-			// 	rprintf(FWARNING, "[yee-%s] sender.c: send_files differential full backup path: %s\n", who_am_i(), diff_full_backup_path);
-
-			// 	if (tmp_dir == NULL)
-			// 	{
-			// 		char cwd[MAXPATHLEN];
-			// 		getcwd(cwd, sizeof(cwd));
-
-					
-
-			// 		if(errno == ENOENT)
-			// 		{
-			// 			rprintf(FWARNING, "[yee-%s] sender.c: send_files differential full backup path not exist\n", who_am_i());
-			// 		}
-			// 		else if(errno == EACCES)
-			// 		{
-			// 			rprintf(FWARNING, "[yee-%s] sender.c: send_files differential full backup path cannot be accessed\n", who_am_i());
-			// 		}
-			// 		else
-			// 		{
-			// 			rprintf(FWARNING, "[yee-%s] sender.c: send_files differential full backup path open failed, errno = %d\n", who_am_i(), errno);
-			// 		}
-			// 		rprintf(FWARNING, "[yee-%s] sender.c: send_files first differential backup: %s, cwd:%s\n", who_am_i(), fname, cwd);
-			// 		fd = do_open(fname, O_RDONLY, 0);
-			// 	}
-			// 	else
-			// 	{
-			// 		closedir(tmp_dir);
-			// 		int full_count = read_sort_dir_files(diff_full_backup_path, differential_full_files->file_path);
-
-			// 		strcpy(diff_newest_full_file_path, differential_full_files->file_path[full_count - 1]);
-
-			// 		rprintf(FWARNING, "[yee-%s] sender.c: send_files differential newest backup_files fname: %s\n", who_am_i(), diff_newest_full_file_path);
-
-			// 		fd = do_open(diff_newest_full_file_path, O_RDONLY, 0);
-			// 	}
-			// }
 			else
 				fd = do_open(fname, O_RDONLY, 0);						// 打开备份文件, 与接收的校验和比对,计算增量信息
 			if (fd == -1) {
