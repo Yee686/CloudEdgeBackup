@@ -776,12 +776,12 @@ int manage_backup_version(const char* backup_path)
 	backup_files_list *backup_files_list_full = (backup_files_list*)malloc(sizeof(backup_files_list));
 	backup_files_list *backup_files_list_delta = (backup_files_list*)malloc(sizeof(backup_files_list));
 
-	rprintf(FWARNING, "[yee-%s] receiver.c: manage_backup_version backup_full_path = %s, backup_delta_path = %s\n", who_am_i(), backup_full_path, backup_delta_path);
+	// rprintf(FWARNING, "[yee-%s] receiver.c: manage_backup_version backup_full_path = %s, backup_delta_path = %s\n", who_am_i(), backup_full_path, backup_delta_path);
 
 	backup_files_list_full->num = read_sort_dir_files(backup_full_path, backup_files_list_full->file_path);
 	backup_files_list_delta->num = read_sort_dir_files(backup_delta_path, backup_files_list_delta->file_path);
 
-	rprintf(FWARNING, "[yee-%s] receiver.c: full_num = %d, delta_num = %d\n", who_am_i(), backup_files_list_full->num, backup_files_list_delta->num);
+	// rprintf(FWARNING, "[yee-%s] receiver.c: full_num = %d, delta_num = %d\n", who_am_i(), backup_files_list_full->num, backup_files_list_delta->num);
 
 	if(backup_files_list_full->num <= backup_version_num && backup_files_list_delta->num <= backup_version_num)
 	{
@@ -1403,7 +1403,7 @@ int recv_files(int f_in, int f_out, char *local_name)
 			break;
 		}
 
-		rprintf(FWARNING, "[yee-%s] receiver.c: recv_files pre_write_full_file fname = %s, first_backup = %d, whole_file = %d\n", who_am_i(), fname, first_backup, whole_file);
+		// rprintf(FWARNING, "[yee-%s] receiver.c: recv_files pre_write_full_file fname = %s, first_backup = %d, whole_file = %d\n", who_am_i(), fname, first_backup, whole_file);
 		// 备份任务 并且是第一次备份 全量文件管理 将最新版本文件写入全量备份文件
 		if(task_type_backup_or_recovery_receiver == 0  && (first_backup == 1 || whole_file == 1) )	
 		{
@@ -1421,7 +1421,7 @@ int recv_files(int f_in, int f_out, char *local_name)
 				size_t buffer_size = sizeof(buf);
 				while((read_len = fread(buf, sizeof(char), buffer_size, full_tmp)) > 0)
 				{
-					rprintf(FWARNING, "[yee-%s] write_full_files write %ld chars to %s\n", who_am_i(), read_len, full_backup_fname);
+					// rprintf(FWARNING, "[yee-%s] write_full_files write %ld chars to %s\n", who_am_i(), read_len, full_backup_fname);
 					fwrite(buf, sizeof(char), read_len, full_backup);
 					if(read_len < buffer_size)	// 读到了文件末尾
 					{
@@ -1462,7 +1462,7 @@ int recv_files(int f_in, int f_out, char *local_name)
 			char manage_backup_path[MAXPATHLEN];
 			sprintf(manage_backup_path, "%s/%s.backup/%s/", dir_name, file_name, backup_type?"differential":"incremental");
 
-			rprintf(FWARNING, "[yee-%s] receiver.c: recv_files manage_backup_version %s\n", who_am_i(), manage_backup_path);
+			// rprintf(FWARNING, "[yee-%s] receiver.c: recv_files manage_backup_version %s\n", who_am_i(), manage_backup_path);
 			if(manage_backup_version(manage_backup_path) != 0)
 			{
 				rprintf(FWARNING, "[yee-%s] receiver.c: recv_files manage_backup_version %s failed\n", who_am_i(), manage_backup_path);

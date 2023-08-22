@@ -1423,7 +1423,7 @@ void send_files(int f_in, int f_out)
 
 			
 			// fd = do_open(fname, O_RDONLY, 0);
-			rprintf(FWARNING, "[yee-%s] sender.c: task_type = %d, backup_type = %d\n", who_am_i(), task_type_backup_or_recovery_sender, backup_type);
+			// rprintf(FWARNING, "[yee-%s] sender.c: task_type = %d, backup_type = %d\n", who_am_i(), task_type_backup_or_recovery_sender, backup_type);
 			if(task_type_backup_or_recovery_sender == 1)		// 恢复,待发送文件定位到xxxx.backup中的已拼接的全量文件
 			{
 				rprintf(FWARNING, "[yee-%s] sender.c: send_files recovery_files fname(before alter): %s\n", who_am_i(), fname);
