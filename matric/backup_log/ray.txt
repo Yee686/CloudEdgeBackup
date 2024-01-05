@@ -1,0 +1,89 @@
+Now start : init start time 
+before start_client time = 21423 us
+before start_socket_client time = 21432 us
+before send_file_list(first) time = 1055669 us
+sending incremental file list
+finish_filelist time = 1056421 us
+finish receive_sums(second) time = 1113445 us
+finish receive_sums(second) CPU clock time is 1.000000 seconds 
+ 256KB/file_0.txt
+total compare Times: 33346 
+ finish receive_sums(second) time = 1115919 us
+finish receive_sums(second) CPU clock time is 1.000000 seconds 
+ 256KB/file_1.txt
+total compare Times: 33346 
+ finish receive_sums(second) time = 1121878 us
+finish receive_sums(second) CPU clock time is 1.000000 seconds 
+ 256KB/file_2.txt
+total compare Times: 33346 
+ finish receive_sums(second) time = 5169174 us
+finish receive_sums(second) CPU clock time is 5.000000 seconds 
+ 256KB/file_3.txt
+total compare Times: 33346 
+ finish receive_sums(second) time = 10030535 us
+finish receive_sums(second) CPU clock time is 10.000000 seconds 
+ 256KB/file_4.txt
+total compare Times: 33346 
+ finish receive_sums(second) time = 14870860 us
+finish receive_sums(second) CPU clock time is 15.000000 seconds 
+ 2MB/file_0.txt
+total compare Times: 216094 
+ finish receive_sums(second) time = 38891003 us
+finish receive_sums(second) CPU clock time is 39.000000 seconds 
+ 32KB/file_0.txt
+total compare Times: 8299 
+ finish receive_sums(second) time = 38891418 us
+finish receive_sums(second) CPU clock time is 39.000000 seconds 
+ 32KB/file_1.txt
+total compare Times: 8299 
+ finish receive_sums(second) time = 43478628 us
+finish receive_sums(second) CPU clock time is 43.000000 seconds 
+ 32KB/file_2.txt
+total compare Times: 8299 
+ finish receive_sums(second) time = 43478998 us
+finish receive_sums(second) CPU clock time is 43.000000 seconds 
+ 32KB/file_3.txt
+total compare Times: 8299 
+ finish receive_sums(second) time = 43479346 us
+finish receive_sums(second) CPU clock time is 43.000000 seconds 
+ 32KB/file_4.txt
+total compare Times: 8299 
+ finish receive_sums(second) time = 43479663 us
+finish receive_sums(second) CPU clock time is 43.000000 seconds 
+ 4KB/file_0.txt
+total compare Times: 8262 
+ finish receive_sums(second) time = 43479834 us
+finish receive_sums(second) CPU clock time is 43.000000 seconds 
+ 4KB/file_1.txt
+total compare Times: 8262 
+ finish receive_sums(second) time = 43480019 us
+finish receive_sums(second) CPU clock time is 43.000000 seconds 
+ 4KB/file_2.txt
+total compare Times: 8262 
+ finish receive_sums(second) time = 43480513 us
+finish receive_sums(second) CPU clock time is 43.000000 seconds 
+ 4KB/file_3.txt
+total compare Times: 8262 
+ finish receive_sums(second) time = 51996669 us
+finish receive_sums(second) CPU clock time is 52.000000 seconds 
+ 4KB/file_4.txt
+total compare Times: 8262 
+ finish send_files(third) time = 54548908 us
+
+Number of files: 21 (reg: 16, dir: 5)
+Number of created files: 0
+Number of deleted files: 0
+Number of regular files transferred: 16
+Total file size: 4,110,311 bytes
+Total transferred file size: 4,110,311 bytes
+Literal data: 469,639 bytes
+Matched data: 3,640,672 bytes
+File list size: 0
+File list generation time: 0.001 seconds
+File list transfer time: 0.000 seconds
+Total bytes sent: 485,365
+Total bytes received: 22,967
+
+sent 485,365 bytes  received 22,967 bytes  0.00 bytes/sec
+total size is 4,110,311  speedup is 8.09
+finish time = 54549353 us
